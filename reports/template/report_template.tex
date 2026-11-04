@@ -108,11 +108,39 @@ In Figure~\ref{fig:turtlebot} ...
 	\caption{The TurtleBot}
 \end{figure}
 
-\subsection{Another subsection}
+\subsection{Brief Introduction and Objectives}
 
-Lorem ipsum dolor sit amet, consectetur adipisci elit, sed eiusmod tempor incidunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur.
+Provide a high-level overview of the laboratory experience. Describe the goals of the activity, the hardware or software platform under test, and what key concepts were intended to be explored during the lab session.
 
-\subsection{Another subsection}
+\subsection{Problem Analysis}
+
+Analyse the requirements or specs of the given engineering problem before jumping into implementation:
+\begin{itemize}
+	\item What are the constraints (e.g., memory limits, sampling rate, processing budget)?
+	\item What performance criteria must be met (e.g., settling time, overshoot, steady-state error)?
+\end{itemize}
+
+\subsection{Theoretical Background}
+Describe the relevant theoretical concepts, mathematical models, equations, or physical laws applied.
+
+For example, considering a continuous transfer function:
+\begin{equation}
+	G(s) = \frac{K}{\tau s + 1} e^{-\theta s}
+\end{equation}
+Explain how this theoretical baseline guides the implementation choice or controller structure.
+
+\subsection{Design \& Implementation Choices}
+
+Detail your design decisions, thought process, and engineering trade-offs.
+
+\subsubsection{Tools \& Software Environment}
+
+\begin{itemize}
+	\item \textbf{MATLAB / Simulink:} Used for offline parameter identification and simulation.
+	\item \textbf{C / C++ / Embedded IDE:} Used for real-time firmware execution.
+\end{itemize}
+
+\subsubsection{Code Structure}
 
 \begin{lstlisting}[language=C, caption={C code using listings}, label={lst:label} ]
 #include <stdio.h>
@@ -126,8 +154,37 @@ int main()
 
 See code~\ref{lst:label}.
 
+\subsection{Controller Design (If Applicable)}
 
+If the activity involved control system synthesis:
+\begin{itemize}
+	\item State desired requirements (e.g., Settling Time $T_s < 1.0\,\text{s}$, Phase Margin $\phi_m > 45^\circ$).
+	\item Detail the tuning method (e.g., pole placement, root locus, frequency response tuning).
+\end{itemize}
 
+\subsection{Discovered Issues, Calibration \& Workarounds}
+
+This section captures critical unexpected findings during execution:
+\begin{itemize}
+	\item \textbf{Unforeseen Issues:} Detail any problems not noticed during the design phase (e.g., noise on sensor pins, numerical overflow).
+	\item \textbf{Calibration \& Performance Gaps:} If the controller did not achieve perfect calibration or desired performance, explain why (e.g., unmodeled dynamics, saturation limits, transport delay) and propose plausible fixes.
+	\item \textbf{Original / Experimental Solutions:} If original or non-standard approaches were tried, describe why they were developed and assess their success or failure.
+\end{itemize}
+
+\subsection{Results and Graphical Analysis}
+
+Present collected measurements, plots, and experimental data. Describe what each plot demonstrates rather than just attaching graphics.
+
+\begin{figure}[htbp]
+	\centering
+	\framebox[0.85\textwidth]{\vbox to 45mm{\vfill \centerline{\textit{[ Insert Step Response Plot / Data Visualisation Here ]}} \vfill}}
+	\caption{Step response comparison: Target trajectories vs. Measured output.}
+	\label{fig:step_response}
+\end{figure}
+
+\subsection{Conclusions}
+
+Summarise the key learnings, whether the initial objectives were reached, and what improvements could be introduced in future iterations.
 
 \clearpage
 \appendix
