@@ -1,0 +1,89 @@
+General information
+
+The final exam consists of two parts:
+
+    Writing a report regarding lab activities.
+        One report per group.
+        The report must be written in English
+        The report has to be uploaded to the dedicated section in moodle at least 1 week before the presentation
+
+    A group presentation regarding the lab activity report.
+        The presentation must be performed on one of the scheduled exam days
+
+    Please enroll in the exam via Uniweb. I will notify you when enrollment is open.
+    Important: If you are not enrolled or if this course is not included in your study plan, you will not be allowed to take part in the final exam.
+    The exam schedule will be published the following day. Depending on the number of registered groups, the session may be split across multiple days.
+    If there are any issues with the proposed schedule, please let me know as soon as possible, and we will try to find a suitable solution.
+    Submission of project deliverables:
+    Prior to your scheduled presentation date, please send me all project deliverables, including (but not limited to):
+        STM32 source code
+        MATLAB/Python scripts used for data analysis (if applicable)
+        Source code of the report (Latex source code)
+        Any relevant videos or images
+    Links to Git repositories and/or cloud folders are preferred. Alternatively, you may bring a USB drive containing all files on the day of the examination.
+
+Content of the report
+
+The report must address all 4 laboratory activities:
+
+    Laboratory 1: I2C
+    Laboratory 2: Open loop control (Motor parameter identification)
+    Laboratory 3: Motor Control
+    Laboratory 4: Line following
+
+Laboratory 5 (RTOS) is not mandatory so its absence in the report will NOT affect the final evaluation in any way. However, groups that have decided to do lab 5 are encouraged to describe their results in the report.
+
+For every laboratory activity, the report must include (but not limited to) the following:
+
+    Brief introduction or description of the experiences;
+    Problem analysis if necessary;
+    Relevant theoretical background;
+    Code structure and implementation choices;
+    Controller design if applicable;
+    Results;
+    Conclusions;
+
+Some suggestions about how to write the report:
+
+    A description of the design and implementation choices taken;
+    List and/or description of tools that you may have used, for example, Matlab;
+    Description of issues or problems that you encountered and eventual workarounds;
+    Description of problems that you didn’t notice during the design phase;
+    Graph and measurements;
+    Try to always explain the thought process that allows you to come out with a solution, don’t limit yourself to the description of the solution;
+    Use an appropriated language, considering that you are writing a technical/scientific document;
+    If you encountered some problems completing the experiences, clearly explain why and what kind of issues emerged;
+    Original solutions and observations are always welcome. If you have tried to solve the proposed problems with original solutions, describe them in the report whether they worked or not, giving reasons why they worked/do not worked.
+    Some groups were concerned because their controller was not perfectly calibrated. Here the performance of the controller is of secondary importance. In these cases, in general, focus on stating what was the desired performance, providing reasons why you were unable to achieve it, and possibly providing a solution.
+    The length of the report should be limited to a maximum of 40 pages
+
+Presentation
+
+    The presentation is a teamwork
+    The presentation should be made using slides.
+    The presentation has to be uploaded to the dedicated section in moodle at least the day before the presentation
+    The presentation and discussion must be held in English
+    You have 30 minutes to present your work
+    The distribution of the slides and presentation among the team members is up to you. Is suggested to distribute the contents fairly both in terms of quantity and quality.
+    The presentation will be followed by a question and answer session regarding the laboratory activity and theoretical aspects discussed throughout the course.
+
+Some suggestions about the presentation:
+
+    The presentation should resume the content of the report;
+    Report the elements that help to understand the requirements, objectives, and design choices.
+    Report clearly what you have achieved and how you have achieved it.
+    The presentation should not be a summary of the code you have written.
+    It is inadvisable to report long sections of code. If necessary, report only short sections.
+    Use of pictures, diagrams, schematics, and other visual information is advisable (where applicable). For example, to describe the code flow/execution sequence of your program you can use flow charts instead of text.
+
+Individual Contribution and Assessment Policy
+
+It is mandatory that each student demonstrates a clear, concrete, and active contribution to both the report writing and the laboratory activities.
+During the presentation and the subsequent question-and-answer session, the individual contribution of each group member must be evident and verifiable.
+
+If a student is unable to clearly demonstrate their personal involvement, either through the presentation itself or through answers to technical and theoretical questions, and if there is no clear evidence of active participation in the report preparation and laboratory work, the evaluation for that student will be considered insufficient, regardless of the overall quality of the group work.
+
+In such cases, the student will be required to attend an additional individual laboratory examination session. During this session, the student will be asked to solve exercises similar to those carried out during the course laboratory activities, in order to demonstrate the acquisition of the minimum and essential competencies related to embedded systems programming and control of embedded systems.
+
+Only upon successful completion of this additional laboratory examination will the student be eligible to pass the final exam.
+Last modified: Sunday, 20 September 2026, 10:40 PM
