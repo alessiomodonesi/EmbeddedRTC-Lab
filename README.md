@@ -1,12 +1,30 @@
-# Embedded Real-Time Control - Group 10
+# Embedded Real-Time Control - Lab
 
-Welcome to the official repository for Group 10's project in the **Embedded Real-Time Control** course. This repository tracks our work using STM32 microcontrollers, including laboratory code, individual lab reports, and the final presentation.
+Welcome to the official repository for final project in the **Embedded Real-Time Control** course. This repository tracks our work using STM32 microcontrollers, including laboratory code, individual lab reports, and the final presentation.
 
 ## Repository Structure
 
-- `labs/`: Source code, startup files, and firmware configurations for each laboratory exercise.
-- `reports/`: Documentation and reports for each completed laboratory session.
-- `presentation/`: Final slides and materials for the presentation with the professor.
+```text
+.
+├── docs/             # General documentation, PDFs, and cheatsheets
+├── labs/             # Lab source code and projects
+│   ├── lab0/
+│   ├── lab1/
+│   └── lab2/
+├── presentation/     # Materials for the final presentation
+├── reports/          # Lab reports and template
+│   ├── lab1/
+│   ├── lab2/
+│   └── template/
+└── README.md
+```
+
+- `docs/`: cross-cutting documentation and cheatsheets.
+- `labs/`: STM32 projects for `lab0`, `lab1`, and `lab2`, including code, drivers, and configurations.
+- `reports/`: lab reports and LaTeX template.
+- `presentation/`: slides and materials for the final presentation.
+
+This keeps it consistent with the tree, but without listing all files and build subfolders.
 
 ## Course Workflow
 
@@ -15,6 +33,7 @@ Welcome to the official repository for Group 10's project in the **Embedded Real
 3. **Final Evaluation:** Comprehensive presentation of the project results to determine the final grade.
 
 ## Group Members
+
 - Diego Marchini
 - Alessio Modonesi
 - Susanna Sandoyan
