@@ -34,7 +34,7 @@ This keeps it consistent with the tree, but without listing all files and build 
 
 ## Group Members
 
-- Diego Marchini
-- Alessio Modonesi
-- Susanna Sandoyan
-- Mattia Zanini
+- [Diego Marchini](https://github.com/DiegoMarchini)
+- [Alessio Modonesi](https://github.com/alessiomodonesi)
+- [Susanna Sandoyan](https://github.com/susannasand)
+- [Mattia Zanini](https://github.com/Mattia-Zanini)
