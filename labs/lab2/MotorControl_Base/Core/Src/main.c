@@ -139,10 +139,11 @@ static int32_t enc_delta(TIM_HandleTypeDef *htim, uint32_t *previous_count)
 {
   uint32_t current_count = __HAL_TIM_GET_COUNTER(htim);
   int32_t range = (int32_t)__HAL_TIM_GET_AUTORELOAD(htim) + 1;
-  // int32_t diff_count = (int32_t)current_count - (int32_t)(*previous_count);
+  int32_t diff_count = 0;
 
   /* concise implementation: using only c2 difference */
   /*
+    int32_t diff_count = (int32_t)current_count - (int32_t)(*previous_count);
     if (diff_count > range / 2) // counter overflow
       diff_count -= range;
     else if (diff_count < -range / 2) // counter underflow
@@ -150,19 +151,19 @@ static int32_t enc_delta(TIM_HandleTypeDef *htim, uint32_t *previous_count)
   */
 
   /* motor control lecture implementations */
-  if (__HAL_TIM_IS_TIM_COUNTING_DOWN(&htim))
+  if (__HAL_TIM_IS_TIM_COUNTING_DOWN(htim))
   {
-    if (current_count <= previous_count)
-      diff_count = current_count - previous_count;
+    if (current_count <= *previous_count)
+      diff_count = (int32_t)current_count - (int32_t)(*previous_count);
     else /* counter underflow */
-      diff_count = -(range - current_count) - previous_count;
+      diff_count = -(range - (int32_t)current_count) - (int32_t)(*previous_count);
   }
   else /* COUNTING_UP */
   {
-    if (current_count >= previous_count)
-      diff_count = current_count - previous_count;
+    if (current_count >= *previous_count)
+      diff_count = (int32_t)current_count - (int32_t)(*previous_count);
     else /* counter overflow */
-      diff_count = (range - previous_count) + current_count;
+      diff_count = (range - (int32_t)(*previous_count)) + (int32_t)current_count;
   }
 
   *previous_count = current_count;
@@ -241,8 +242,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   {
     // check speed log
     // M1_SIGN, M2_SIGN give the direction of the speed
-    float w1 = M1_SIGN * counts_to_rads(enc_delta(&htim3, &TIM3_PreviousCount));
-    float w2 = M2_SIGN * counts_to_rads(enc_delta(&htim4, &TIM4_PreviousCount));
+    float w1 = M1_SIGN * counts_to_rads(enc_delta(&htim3, &TIM3_previous_count));
+    float w2 = M2_SIGN * counts_to_rads(enc_delta(&htim4, &TIM4_previous_count));
 
     float v_ref = 0.0f; // voltage reference
     // the logger starts with step_amps[0] voltage level (high)
@@ -336,8 +337,8 @@ int main(void)
   /* Start encoders timers */
   HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);
   HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL);
-  TIM3_PreviousCount = __HAL_TIM_GET_COUNTER(&htim3); /* avoid a speed spike at start */
-  TIM4_PreviousCount = __HAL_TIM_GET_COUNTER(&htim4);
+  TIM3_previous_count = __HAL_TIM_GET_COUNTER(&htim3); /* avoid a speed spike at start */
+  TIM4_previous_count = __HAL_TIM_GET_COUNTER(&htim4);
 
   /* Start servomotors PWM (avoid floating inputs to servomotors) */
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
