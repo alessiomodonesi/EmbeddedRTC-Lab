@@ -1,9 +1,12 @@
 % LOAD DATA FROM THE .MAT FILE
 load('motor_data_forward_filtered.mat');
-w1 = w1_filt; % Rename for convenience
+
+% Rename for convenience (change only these)
+w_data = w1_filt;
+u_data = u1;
 
 % DETECT RISING AND FALLING EDGES
-motor_on = u1 > 0.1; 
+motor_on = u_data > 0.1; 
 voltage_changes = diff(motor_on);
 start_indices = find(voltage_changes == 1) + 1; 
 end_indices = find(voltage_changes == -1);
@@ -28,8 +31,8 @@ for i = 1:num_iterations
     % Extract data for the current iteration
     start_idx = start_indices(i);
     end_idx = end_indices(i);
-    w_step = w1(start_idx:end_idx);
-    u_step = u1(start_idx:end_idx);
+    w_step = w_data(start_idx:end_idx);
+    u_step = u_data(start_idx:end_idx);
 
     Va = mean(u_step); 
 
