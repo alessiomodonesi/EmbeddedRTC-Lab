@@ -1,7 +1,9 @@
 close all; clear; clc;
 
 %% 1. Loading the raw data from the TurtleBot
-load('motor_data.mat'); % Load the 'data' structure saved by the data logger
+input_filename = 'motor_data_forward.mat';
+output_filename = 'motor_data_forward_filtered.mat';
+load(input_filename); % Load the 'data' structure saved by the data logger
 
 % Check that some samples have been acquired
 assert(data.size > 0, 'No samples found in the .mat file');
@@ -32,7 +34,7 @@ w1_filt = filter(numF, denF, w1);
 w2_filt = filter(numF, denF, w2);
 
 %% 4. Saving into the new .mat file
-save('motor_data_filtered.mat', 't', 'w1', 'w2', 'w1_filt', 'w2_filt', 'u1', 'u2', 'fc', 'Ts');
+save(output_filename, 't', 'w1', 'w2', 'w1_filt', 'w2_filt', 'u1', 'u2', 'fc', 'Ts');
 fprintf('File saved successfully: motor_final_filtered.mat (fc = %.2f Hz)\n', fc);
 
 %% 5. Visual check (comparison of the two filtered speeds)

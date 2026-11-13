@@ -1,5 +1,5 @@
 % LOAD DATA FROM THE .MAT FILE
-load('motor_final_filtered.mat');
+load('motor_data_forward_filtered.mat');
 w1 = w1_filt; % Rename for convenience
 
 % DETECT RISING AND FALLING EDGES
@@ -16,6 +16,7 @@ f_inf_array = zeros(1, num_iterations);
 mu_array = zeros(1, num_iterations);
 tau_array = zeros(1, num_iterations);
 T_array = zeros(1, num_iterations);
+Va_array = zeros(1, num_iterations);
 
 % Constant parameters
 num_samples = 50; 
@@ -37,7 +38,7 @@ for i = 1:num_iterations
     f_inf = mean(steady_state_segment);
     mu = f_inf / Va;
 
-    % 3. CALCULATE TIME DELAY (tau) AND TIME CONSTANT (T) AT 63.2%
+    % CALCULATE TIME DELAY (tau) AND TIME CONSTANT (T) AT 63.2%
     % Calculate the 5% and 63.2% speed thresholds
     threshold_5  = 0.05 * f_inf;
     threshold_63 = 0.632 * f_inf;
@@ -59,14 +60,14 @@ for i = 1:num_iterations
     mu_array(i) = mu;
     tau_array(i) = tau;
     T_array(i) = T;
+    Va_array(i) = Va;
 
     % Print results to the command window
-    %fprintf('Iteration %d:\n', i);
-    %fprintf('  Voltage (Va): %.2f V\n', Va);
-    %fprintf('  Speed (f_inf): %.2f rad/s\n', f_inf);
-    %fprintf('  Gain (mu): %.4f (rad/s)/V\n', mu);
-    %fprintf('  Time delay (tau): %.4f s\n', tau);
-    %fprintf('  Time constant (T):  %.4f s\n\n', T);
+    fprintf('Iteration %d:\n', i);
+    fprintf('  Speed (f_inf): %.2f rad/s\n', f_inf);
+    fprintf('  Gain (mu): %.4f (rad/s)/V\n', mu);
+    fprintf('  Time delay (tau): %.4f s\n', tau);
+    fprintf('  Time constant (T):  %.4f s\n\n', T);
 
 end
 
@@ -77,7 +78,8 @@ Ti_63 = 3 .* tau_array;
 Ki_63 = Kp_63 ./ Ti_63;
 
 % Display the results in the command window
-disp('--- PI Parameters (63.2% Method) ---');
+disp('--- PI1 Parameters (63.2% Method) ---');
 for i = 1:num_iterations
-    fprintf('Iteration %d: Kp = %.4f, Ki = %.4f\n', i, Kp_63(i), Ki_63(i));
+    fprintf('Iteration %d: V = %.2f, Kp = %.4f, Ki = %.4f\n', i, Va_array(i), Kp_63(i), Ki_63(i));
 end
+fprintf("\n");

@@ -36,27 +36,34 @@
 /* USER CODE BEGIN PD */
 // #define	HAL_TIMEOUT		1
 #define TS 0.01
+#define KP1 1.6196
+#define KI1 8.9979
+#define KP2 1.9574
+#define KI2 10.8747
 
 #define VBATT 12.0 /* PSU max voltage */
 #define V2DUTY ((float)(TIM8_ARR_VALUE + 1) / VBATT)
 #define DUTY2V ((float)VBATT / (TIM8_ARR_VALUE + 1))
 
 #define RPM2RADS 2 * M_PI / 60
-#define ENC_PPR 3840.0f /* encoder counts per wheel revolution (x4 decoding, gearbox included) TODO needs check */
+#define ENC_PPR 3840.0f /* encoder counts per wheel revolution (x4 decoding, gearbox included) */
 #define DUTY_MAX 0.5f   /* lab requirement: duty <= 50 % (6 V on 12 V) */
 
 #define MODE_COAST 0 /* Forward/Coast (fast decay) */
 #define MODE_BRAKE 1 /* Forward/Brake (slow decay) */
 #define DRIVE_MODE MODE_BRAKE
 
-/* H-bridge inputs on TIM8 and motor orientation, TODO we should check this:w
- * */
+/* H-bridge inputs on TIM8 and motor orientation */
 #define M1_IN1_CH TIM_CHANNEL_1 /* motor 1, encoder TIM3 */
 #define M1_IN2_CH TIM_CHANNEL_2
 #define M2_IN1_CH TIM_CHANNEL_3 /* motor 2, encoder TIM4 */
 #define M2_IN2_CH TIM_CHANNEL_4
+
+/* +1: forward
+ * -1: reverse
+ */
 #define M1_SIGN (+1) /* flip so "forward" gives w > 0 */
-#define M2_SIGN (-1) /* right motor is mounted mirrored */
+#define M2_SIGN (+1)
 
 /* step experiment */
 #define T_REST 2.0f /* in seconds 0 V before each step */
@@ -275,6 +282,27 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
     }
   }
+}
+
+
+/* Motor 1 Controller */
+float PI1(float error)
+{
+	float P = KP1 * error;
+	static float I1 = 0;
+	I1 = I1 + KI1 * error * TS;
+
+	return P + I1;
+}
+
+/* Motor 2 Controller */
+float PI2(float error)
+{
+      float P = KP2 * error;
+      static float I2 = 0;
+      I2 = I2 + KI2 * error * TS;
+
+      return P + I2;
 }
 /* USER CODE END 0 */
 

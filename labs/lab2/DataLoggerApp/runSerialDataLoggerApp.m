@@ -11,7 +11,7 @@
 
 %   select serial port 
 %   Note: use serialportlist() to check for available serial ports
-serialPortName = "/dev/tty.usbmodem113103"; 
+serialPortName = "/dev/tty.usbmodem103"; 
 
 %   define packet specifier
 packetSpec = {'3*single', 'uint16', '2*int32'};

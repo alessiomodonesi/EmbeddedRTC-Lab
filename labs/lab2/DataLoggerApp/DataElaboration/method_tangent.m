@@ -1,5 +1,5 @@
 % LOAD DATA
-load('motor_final_filtered.mat');
+load('motor_data_forward_filtered.mat');
 w1 = w1_filt; 
 
 % DETECT RISING AND FALLING EDGES
@@ -16,6 +16,7 @@ f_inf_array = zeros(1, num_iterations);
 mu_array = zeros(1, num_iterations);
 tau_tan_array = zeros(1, num_iterations);
 T_tan_array = zeros(1, num_iterations);
+Va_array = zeros(1, num_iterations);
 
 t_s = 0.01; % Sample time
 num_samples = 50; 
@@ -24,7 +25,7 @@ num_samples = 50;
 figure;
 hold on;
 
-% 2. FOR LOOP TO ANALYZE THE ITERATIONS (TANGENT METHOD)
+% FOR LOOP TO ANALYZE THE ITERATIONS (TANGENT METHOD)
 for i = 1:num_iterations
 
     start_idx = start_indices(i);
@@ -32,7 +33,7 @@ for i = 1:num_iterations
     w_step = w1(start_idx:end_idx);
     u_step = u1(start_idx:end_idx);
 
-    Va = mean(u_step); 
+    Va = mean(u_step);
 
     % Time vector for this specific step (starts at 0)
     t_step = (0:length(w_step)-1)' * t_s;
@@ -42,7 +43,7 @@ for i = 1:num_iterations
     f_inf = mean(steady_state_segment);
     mu = f_inf / Va;
 
-    % 3. TANGENT METHOD
+    % TANGENT METHOD
     % Calculate the numerical derivative (dy/dt)
     dw = diff(w_step) / t_s;
 
@@ -67,12 +68,13 @@ for i = 1:num_iterations
     mu_array(i) = mu;
     tau_tan_array(i) = tau;
     T_tan_array(i) = T;
+    Va_array(i) = Va;
 
     % Print results to the command window
-    %fprintf('Iteration %d (Tangent Method):\n', i);
-    %fprintf('  Speed (f_inf): %.2f rad/s\n', f_inf);
-    %fprintf('  Time delay (tau): %.4f s\n', tau);
-    %fprintf('  Time constant (T):  %.4f s\n\n', T);
+    fprintf('Iteration %d (Tangent Method):\n', i);
+    fprintf('  Speed (f_inf): %.2f rad/s\n', f_inf);
+    fprintf('  Time delay (tau): %.4f s\n', tau);
+    fprintf('  Time constant (T):  %.4f s\n\n', T);
 
     % --- VERIFICATION PLOT ---
     % Select a subplot for each iteration (up to 5, or 6 if you have more)
@@ -94,7 +96,6 @@ for i = 1:num_iterations
     title(sprintf('Iteration %d', i));
     xlabel('Time [s]'); ylabel('Speed');
     grid on;
-    % ----------------------------------------------------
 end
 
 % --- CALCULATE PI PARAMETERS (Tangent Method) ---
@@ -103,7 +104,8 @@ Ti_tan = 3 .* tau_tan_array;
 Ki_tan = Kp_tan ./ Ti_tan;
 
 % Display the results in the command window
-disp('--- PI Parameters (Tangent Method) ---');
+disp('--- PI1 Parameters (Tangent Method) ---');
 for i = 1:num_iterations
-    fprintf('Iteration %d: Kp = %.4f, Ki = %.4f\n', i, Kp_tan(i), Ki_tan(i));
+    fprintf('Iteration %d: V = %.2f, Kp = %.4f, Ki = %.4f\n', i, Va_array(i), Kp_tan(i), Ki_tan(i));
 end
+fprintf("\n");
