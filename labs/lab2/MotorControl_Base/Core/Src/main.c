@@ -141,6 +141,12 @@ static const float step_amps[] = {2.0f, 3.0f, 3.84f, 5.0f, 6.0f};
 static uint32_t TIM3_previous_count = 0, TIM4_previous_count = 0;
 static uint32_t tick = 0;
 
+/* 2π * (d / (ARR * TS)) --> converts from encoder counts to rad/s */
+static float counts_to_rads(int32_t d)
+{
+  return (float)(2.0 * M_PI * (double)d / (ENC_PPR * TS));
+}
+
 /* encoder delta: compute the difference in tick */
 static int32_t enc_delta(TIM_HandleTypeDef *htim, uint32_t *previous_count)
 {
@@ -175,12 +181,6 @@ static int32_t enc_delta(TIM_HandleTypeDef *htim, uint32_t *previous_count)
 
   *previous_count = current_count;
   return diff_count;
-}
-
-/* 2π * (d / (ARR * TS)) --> converts from encoder counts to rad/s */
-static float counts_to_rads(int32_t d)
-{
-  return (float)(2.0 * M_PI * (double)d / (ENC_PPR * TS));
 }
 
 static float motor_set_voltage(uint32_t ch_in1, uint32_t ch_in2, float voltage)
@@ -239,12 +239,32 @@ static float step_reference(uint32_t ir_count)
   return (status >= n_rest) ? step_amps[experiment_index] : 0.0f;
 }
 
+/* motor 1 controller */
+float PI1(float error)
+{
+  float P = KP1 * error;
+  static float I1 = 0;
+  I1 = I1 + KI1 * error * TS;
+
+  return P + I1;
+}
+
+/* motor 2 controller */
+float PI2(float error)
+{
+  float P = KP2 * error;
+  static float I2 = 0;
+  I2 = I2 + KI2 * error * TS;
+
+  return P + I2;
+}
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 
   static int kLed = 0;
 
-  /* Speed ctrl routine */
+  /* speed ctrl routine */
   if (htim->Instance == TIM6)
   {
     // check speed log
@@ -275,34 +295,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
     ertc_dlog_send(&logger, &data, sizeof(data));
 
-    // Indicate that the program is running
+    // indicate that the program is running
     if (++kLed >= 10)
     {
       kLed = 0;
       HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
     }
   }
-}
-
-
-/* Motor 1 Controller */
-float PI1(float error)
-{
-	float P = KP1 * error;
-	static float I1 = 0;
-	I1 = I1 + KI1 * error * TS;
-
-	return P + I1;
-}
-
-/* Motor 2 Controller */
-float PI2(float error)
-{
-      float P = KP2 * error;
-      static float I2 = 0;
-      I2 = I2 + KI2 * error * TS;
-
-      return P + I2;
 }
 /* USER CODE END 0 */
 
