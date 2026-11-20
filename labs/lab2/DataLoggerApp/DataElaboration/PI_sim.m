@@ -1,3 +1,5 @@
+close all; clear; clc;
+
 % --- SYSTEM PARAMETERS ---
 % values estimated on motor 1 at Va = 3.84 V (63.2 % method), then used to
 % design the controller in open loop with Ziegler-Nichols.
@@ -26,6 +28,8 @@ I = 0; % accumulated integral term [V], keeps memory between samples
 % pre-padded array, in this way we implement the delay exp(-tau * s)
 n_delay = round(tau/Ts);        % delay expressed in samples (tau / Ts)
 Va_hist = zeros(1, N + n_delay); % voltage history; zeros at the start: motor at rest
+
+V_max = 6.0; % maximum voltage allowed by the driver (50 % of V_PSU)
 
 % --- CLOSED-LOOP SIMULATION CYCLE ---
 for k = 1:N-1
@@ -59,7 +63,6 @@ for k = 1:N-1
     %}
 
     % anti-windup / saturation: the motor cannot exceed the supply voltage
-    V_max = 6.0; % maximum voltage allowed by the driver (50 % of V_PSU)
     if Va > V_max
         Va = V_max;
     elseif Va < -V_max
@@ -93,40 +96,3 @@ xlabel('Time (s)'); ylabel('Voltage (V)');
 title('Control Action (PI Output Voltage)');
 grid on;
 
-%% --- OPEN-LOOP SIMULATION: theoretical models G(s) and P(s), no controller ---
-% input = the voltage steps actually recorded, not the controller output
-load('motor_data_forward.mat');
-t_ol = data.time - data.time(1);        % time vector of the recording, aligned to 0 s
-u_ol = data.signals{2}(1,:);            % commanded voltage of motor 1
-u_ol = max(-6.0, min(6.0, u_ol));       % same 50 % duty limit of the driver
-
-No      = numel(t_ol);                  % number of samples in the recording
-w_G     = zeros(1, No);                 % simulated speed, model G(s) = mu/(1+Ts)
-w_P     = zeros(1, No);                 % simulated speed, model P(s) = G(s)*exp(-tau*s)
-u_hist2 = zeros(1, No + n_delay);       % delay line for P(s)
-
-for k = 1:No-1
-    u_hist2(k + n_delay) = u_ol(k);
-
-    w_G(k+1) = w_G(k) + (Ts/T) * (-w_G(k) + mu*u_ol(k));      % no delay
-    w_P(k+1) = w_P(k) + (Ts/T) * (-w_P(k) + mu*u_hist2(k));   % input delayed by tau
-end
-
-% --- plot 2: input actually fed to the two models
-figure('Color', 'w', 'Name', 'Open-loop input voltage');
-plot(t_ol, u_ol, 'k', 'LineWidth', 1.2);
-xlabel('Time [s]'); ylabel('Voltage [V]');
-title('Recorded voltage steps (input of the open-loop simulation)');
-grid on;
-
-% --- plot 3: models vs the measured speed
-w_real = data.signals{1}(1,:); % raw measured speed of motor 1 [rad/s]
-
-figure('Color', 'w', 'Name', 'Models vs measured speed');
-plot(t_ol, w_real, 'Color', [0.7 0.7 0.7], 'LineWidth', 1.0); hold on;
-plot(t_ol, w_G, 'b', 'LineWidth', 1.5);
-plot(t_ol, w_P, 'r--', 'LineWidth', 1.5);
-xlabel('Time [s]'); ylabel('Velocity [rad/s]');
-title('Open-loop: theoretical G(s), P(s) vs measured speed');
-legend('w_1 measured', 'G(s)', 'P(s)', 'Location', 'best');
-grid on;
