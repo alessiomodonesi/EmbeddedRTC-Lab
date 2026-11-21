@@ -1,9 +1,15 @@
 \documentclass[english]{article}
-\usepackage[english]{babel} 
+\usepackage[english]{babel}
 \usepackage[T1]{fontenc}
-\usepackage[utf8x]{inputenc}
+
+\usepackage[utf8]{inputenc}
+% OR for using utf8x
+%\usepackage{ucs}
+%\usepackage[utf8x]{inputenc}
+
 \usepackage{float}
-\usepackage{graphicx}
+\usepackage{graphicx} % FOR final compile
+%\usepackage[draft]{graphicx} % doesn't draw / load the images every compile
 
 \makeatletter
 \usepackage[a4paper,top=2cm,bottom=2cm,left=2cm,right=2cm]{geometry}
@@ -20,187 +26,560 @@
 
 \usepackage{babel}
 
-
 \usepackage{listings}
 \usepackage{xcolor} % for setting colors
+\usepackage{soul} % for text highlighting
+\sethlcolor{yellow}
 
 % set the default code style
 \lstset{
-    frame=tb, % draw a frame at the top and bottom of the code block
-    tabsize=4, % tab space width
-    showstringspaces=false, % don't mark spaces in strings
-    numbers=left, % display line numbers on the left
-    commentstyle=\color{gray}, % comment color
-    keywordstyle=\color{blue}, % keyword color
-    stringstyle=\color{red} % string color
+  frame=tb, % draw a frame at the top and bottom of the code block
+  tabsize=4, % tab space width
+  breaklines=true, % wrap long code lines instead of overflowing the page
+  showstringspaces=false, % don't mark spaces in strings
+  numbers=left, % display line numbers on the left
+  commentstyle=\color{gray}, % comment color
+  keywordstyle=\color{blue}, % keyword color
+  stringstyle=\color{red} % string color
 }
-
 
 \begin{document}
 \begin{titlepage}
 
-	\begin{center}
-		\begin{Large} \textbf{UNIVERSITY OF PADOVA} \\
-		\end{Large} \vspace{1cm}
-		\vspace{3cm}
-		\begin{Large} Embedded Real--Time Control \end{Large}
-		\par\end{center}
+  \begin{center}
+    \begin{Large} \textbf{UNIVERSITY OF PADOVA} \\
+    \end{Large} \vspace{1cm}
+    \vspace{3cm}
+    \begin{Large} Embedded Real--Time Control
+    \end{Large}
+    \par
+  \end{center}
 
-	\begin{center}
-		\begin{Large}Laboratory report\\
-		\end{Large}
-		\par\end{center}
+  \begin{center}
+    \begin{Large}Laboratory 2 report\\ Open-loop control and motor identification\\
+    \end{Large}
+    \par
+  \end{center}
 
-	\begin{center}
-		\vspace{2cm}
-		\begin{figure}[!htb]
-			\centering \includegraphics[width=8cm]{figures/unipd-logo.png}\\
+  \begin{center}
+    \vspace{2cm}
+    \begin{figure}[!htb]
+      \centering \includegraphics[width=8cm]{figures/unipd-logo.png}\\
 
-		\end{figure}
+    \end{figure}
 
-		\par\end{center}
+    \par
+  \end{center}
 
-	\begin{center}
-		\vspace{2cm}
-		{\Large \textbf{Names} -- \textbf{Student ID Numbers}} \\[1em]
+  \begin{center}
+    \vspace{2cm}
+    {\Large \textbf{Names} -- \textbf{Student ID Numbers}} \\[1em]
 
-		\begin{tabular}{lc}
-			Diego Marchini   & 2239741 \\
-			Alessio Modonesi & 2101846 \\
-			Susanna Sandoyan & 2222159 \\
-			Mattia Zanini    & 2239257
-		\end{tabular}
+    \begin{tabular}{lc}
+      Diego Marchini   & 2239741 \\
+      Alessio Modonesi & 2101846 \\
+      Susanna Sandoyan & 2222159 \\
+      Mattia Zanini    & 2239257
+    \end{tabular}
 
-		\vspace{2cm}
-		{\Large Academic Year 2026-2027}
-	\end{center}
+    \vspace{2cm}
+    {\Large Academic Year 2026-2027}
+  \end{center}
 
 \end{titlepage}
 
-\tableofcontents
-\newpage
+\tableofcontents \newpage
 
-\section{Laboratory 1}
+\section{Laboratory 2: Open-Loop Control and Motor Identification}
+\label{sec:lab2}
 
-In this lab we learnt to interact with external devices connected to the microcontroller through serial bus communication. In particular we used I2C communication to retrieve data from a keypad peripheral and a line sensor.
+In this laboratory we applied voltage steps with a known amplitude to the two DC motors of the TurtleBot, running in
+open loop, measured the angular speed with the encoders, and used the step responses to estimate a first-order model
+of each motor. The models were then used to tune the PI controller needed in Laboratory~3.
 
 \subsection{Relevant theoretical notions}
+\label{sec:lab2-theory}
 
-\subsubsection{I2C protocol}
+\subsubsection{DC motor model}
 
-\subsubsection{SX1509 I/O expander}
+A brushed DC motor is described by the electrical equation of the armature and by the mechanical equation of the
+rotor:
+\begin{equation}
+  V_a = R_a\,i_a + L_a\,\frac{di_a}{dt} + K_b\,\omega, \qquad J\,\frac{d\omega}{dt} = K_t\,i_a - b\,\omega .
+  \label{eq:lab2-motor}
+\end{equation}
+The torque is proportional to the armature current through $K_t$, and the back-EMF is proportional to the speed
+through $K_b$. For an ideal motor the two constants are equal in SI units ($K_t = K_b = K$). Taking the Laplace
+transform of \eqref{eq:lab2-motor} gives
+\begin{equation}
+  G(s) = \frac{\Omega(s)}{V_a(s)} = \frac{K}{L_aJs^2 + (R_aJ+L_ab)s + (R_ab+K^2)} .
+  \label{eq:lab2-g2}
+\end{equation}
+With the parameters of the course motor the denominator has two real roots, one at about $-1000$~rad/s and one at
+about $-3.9$~rad/s. The first pole corresponds to a time constant of about 1~ms and is negligible at the frequencies
+of interest, so the motor behaves as a first-order system:
+\begin{equation}
+  G(s) \simeq \frac{\mu}{1+Ts}, \qquad \mu = \frac{K}{R_ab+K^2}, \qquad T = \frac{R_aJ}{R_ab+K^2} .
+  \label{eq:lab2-first}
+\end{equation}
+$\mu$ is the steady-state gain [rad/s per V] and $T$ the time constant [s], of the order of 0.26~s for the motors of
+the course.
 
-\subsubsection{Pololu QTR reflectance sensor}
+\subsubsection{H-bridge, DRV8871 and decay modes}
 
-\subsubsection{4$\times$4 keypad}
+Each motor is driven by a DRV8871, an H-bridge with two logic inputs. The pair $(IN1,IN2)$ selects the state of the
+bridge: $(1,0)$ forward, $(0,1)$ reverse, $(1,1)$ brake and $(0,0)$ coast. With a PWM signal whose duty cycle $D$ is
+below 100\,\% we alternate between forward and a second state. In \emph{brake} (mode~2) the winding is shorted during
+the off-time, the current decays slowly (slow decay) but the braking torque acts for a longer time, so the wheel stops
+faster. In \emph{coast} (mode~3) the bridge is in high impedance, the current decays quickly through the body diodes
+(fast decay) and the wheel keeps rotating by inertia. The supply is 12~V while the motor is rated for about 6~V, so
+the duty cycle is limited to 50\,\%.
 
-\subsubsection{Timer interrupt frequency}
+\subsubsection{Incremental encoder}
 
-\begin{figure}[!h]
-	\centering
-	\includegraphics[width=0.4\textwidth]{figures/turtlebot_1.jpg}
-	\caption{The TurtleBot}
-	\label{fig:turtlebot}
-\end{figure}
+The encoder produces two square waves $A$ and $B$ 90$^\circ$ out of phase; the direction of rotation is given by which
+one leads. We count every edge (4X decoding): the encoder gives 8 pulses per revolution at the motor shaft, the
+gearbox has a 120:1 ratio, so one wheel revolution corresponds to 3840 counts. Over one sampling period the speed is
+\begin{equation}
+  \omega = \frac{2\pi\,\Delta c}{N_{PPR}\,T_s},
+  \label{eq:lab2-speed}
+\end{equation}
+where $\Delta c$ is the number of counts in the sample. One count in 10~ms is 0.164~rad/s, which is the resolution of
+the measurement. Since the direction is reconstructed from the difference of two readings, a movement larger than
+half a revolution between two samples cannot be distinguished from the opposite one, which sets the limit at 1920
+counts per sample, about 3000~rpm.
 
-In Figure~\ref{fig:turtlebot} ...
+\subsubsection{Timer frequency}
 
-\begin{figure}[!ht]
-	\centering
-	\subfloat[The TurtleBot 1 ]
-	{\includegraphics[width=0.3\textwidth,height=0.45\textwidth]{figures/turtlebot_1.jpg}
-		\label{fig:tbot1}}
-	\subfloat[The TurtleBot 2]
-	{\includegraphics[width=0.3\textwidth,height=0.5\textwidth]{figures/turtlebot_2.jpg}
-		\label{fig:tbot2}}
-	\caption{The TurtleBot}
-\end{figure}
+For a timer fed by a clock $f_{CLK}$, the update frequency is
+\begin{equation}
+  f = \frac{f_{CLK}}{(PSC+1)(ARR+1)} .
+  \label{eq:lab2-timer}
+\end{equation}
+On this board the timer clock is 96~MHz. The control loop uses TIM6 with $PSC=959$ and $ARR=999$, which gives 100~Hz
+($T_s=10$~ms). The PWM uses TIM8 with $PSC=959$ and $ARR=399$, which gives 100~kHz divided by 400, that is 250~Hz
+(period 4~ms); one sampling period therefore contains 2.5 PWM periods.
+
+\subsubsection{Step-response identification and PI tuning}
+
+For the first-order model \eqref{eq:lab2-first} the response to a step $V_a$ is $y(t)=\mu V_a(1-e^{-t/T})$. Two
+graphical methods were used to estimate the parameters. In the \emph{63.2\,\% method} the gain is $\mu=f_\infty/V_a$,
+where $f_\infty$ is the steady-state speed, and the time constant is the time needed to reach 63.2\,\% of $f_\infty$;
+if the response starts after a delay $\tau$, $T$ is measured from the end of the delay. In the \emph{tangent method}
+the straight line with the maximum slope $\dot y_{max}$ is drawn at the inflection point $(t_m,y_m)$; its intersections
+with the time axis and with the steady-state level give
+\begin{equation}
+  t_0 = t_m - \frac{y_m}{\dot y_{max}}, \qquad t_1 = t_m + \frac{f_\infty-y_m}{\dot y_{max}}, \qquad
+  \tau=t_0, \quad T=t_1-t_0 .
+  \label{eq:lab2-tangent}
+\end{equation}
+The tangent method needs the derivative of the measured speed, so it is much more sensitive to noise than the 63.2\,\%
+method. Finally, the Ziegler--Nichols open-loop rules for a PI controller with transfer function
+$C(s)=K_p\left(1+\frac{1}{T_is}\right)=K_p+\frac{K_i}{s}$ are
+\begin{equation}
+  K_p = \frac{0.9\,T}{\mu\,\tau}, \qquad T_i = 3\tau, \qquad K_i = \frac{K_p}{T_i},
+  \label{eq:lab2-zn}
+\end{equation}
+and they require $\tau>0$: a first-order system without delay can never oscillate with a pure proportional controller.
 
 \subsection{Brief Introduction and Objectives}
 
-The goal of this laboratory was to execute tasks that require to access data registered by two devices: a keypad and a line sensor.
-\\Each device was connected to an SX1509 general-purpose I/O expander, which was then connected to the microcontroller through I2C bus.
-\\Both SX1509 devices shared the same I2C line ("i2c1") so we assigned them different slave addresses: 0x3E for "sx1509\_1" (line sensor) and 0x3F for "sx1509\_2" (keypad). 
-\\The laborarory was split into five exercises of increasing complexity: handling the keypad interrupt (Ex. 1), decoding the pressed key (Ex. 2), polling the line sensor by sotware (Ex. 3), polling the line sensor via timer interrupt (Ex. 4), and using the keypad to set the blinking frequency of an LED (Ex. 5, with "easy" and "hard" variants).
+\noindent The goal of the laboratory was to identify the first-order model of the two motors of the rover, working in
+open loop. The activity was organised in the following steps:
+
+\begin{itemize}[nosep]
+  \item read the encoder counters and convert the counts into angular speed in rad/s;
+  \item convert a requested voltage into a PWM duty cycle on the DRV8871, with the 50\,\% limit;
+  \item generate automatically a sequence of voltage steps and log speed and voltage at 100~Hz;
+  \item estimate $\mu$, $T$ and $\tau$ with two different methods and compare the results;
+  \item use the identified model to tune a PI controller with the Ziegler--Nichols rules and check the closed-loop
+    response in simulation.
+\end{itemize}
+
+\noindent The loop was not closed on the hardware: the controller is implemented in the firmware but it is not used
+in this laboratory, because it belongs to Laboratory~3.
 
 \subsection{Problem Analysis}
 
+The task requires four functions at 100~Hz: measuring the speed of both wheels, generating the voltage reference,
+driving the two H-bridges and sending the data to the PC. The timer allocation, summarised in
+Table~\ref{tab:lab2-peripherals}, is fixed by the template, so the design work was in the software structure and in
+the experiment parameters.
 
-\subsection{Theoretical Background}
-Describe the relevant theoretical concepts, mathematical models, equations, or physical laws applied.
+\begin{table}[H]
+  \centering
+  \small
+  \begin{tabular}{@{}llll@{}}
+    % tex-fmt: off
+    \toprule
+    Peripheral & Configuration & Function & Rate \\
+    \midrule
+    TIM3, TIM4        & encoder mode TI12, ARR 3839, filter 15 & wheel position (motor 1, motor 2) & continuous \\
+    TIM6              & PSC 959, ARR 999                       & control loop and sampling         & 100 Hz \\
+    TIM8 CH1--CH4     & PWM mode 1, PSC 959, ARR 399           & IN1/IN2 of the two DRV8871        & 250 Hz \\
+    USART3            & 115200 baud, 8N1                       & data logger to the PC             & 100 Hz \\
+    \bottomrule
+    % tex-fmt: on
+  \end{tabular}
+  \caption{Peripheral allocation for the experiment.}
+  \label{tab:lab2-peripherals}
+\end{table}
 
-For example, considering a continuous transfer function:
-\begin{equation}
-	G(s) = \frac{K}{\tau s + 1} e^{-\theta s}
-\end{equation}
-Explain how this theoretical baseline guides the implementation choice or controller structure.
+\noindent The main problems to solve were the following.
+
+\begin{itemize}[nosep]
+  \item \textbf{Counter wrap-around.} The encoder timers count modulo 3840, so the difference of two readings is
+    correct only if the wheel turns less than half a revolution in 10~ms. The difference must be corrected on both
+    overflow and underflow, and the two cases are not symmetric.
+  \item \textbf{Voltage limit.} The full duty cycle would apply 12~V to a 6~V motor. The requested voltage is
+    therefore saturated at $\pm6$~V, which corresponds to $\pm50$\,\% of the duty cycle.
+  \item \textbf{Reproducible experiment.} Five steps must be applied one after the other, each one starting from a
+    known speed, without a manual action. The sequence must restart from the beginning when a new acquisition starts.
+  \item \textbf{Noise.} The speed obtained by differentiating the encoder counts is affected by quantization and by
+    mechanical vibration, and the derivative needed by the tangent method amplifies both.
+\end{itemize}
 
 \subsection{Design \& Implementation Choices}
-
-Detail your design decisions, thought process, and engineering trade-offs.
+\label{sec:lab2-code}
 
 \subsubsection{Tools \& Software Environment}
 
-\begin{itemize}
-	\item \textbf{MATLAB / Simulink:} Used for offline parameter identification and simulation.
-	\item \textbf{C / C++ / Embedded IDE:} Used for real-time firmware execution.
+\begin{itemize}[nosep]
+  \item \textbf{STM32CubeMX:} configuration of the clock tree, of the encoder timers, of the PWM timer, of the base
+    timer and of the UART used by the logger.
+  \item \textbf{STM32CubeIDE:} writing, building and flashing of the firmware (GCC toolchain, ST-LINK probe).
+  \item \textbf{MATLAB:} reception and storage of the data through the serial data logger app, low-pass filtering,
+    implementation of the two identification methods, Ziegler--Nichols tuning and simulation of the closed loop.
+  \item \textbf{C with the STM32 HAL:} all peripherals are accessed through the HAL API; the data logger is a small
+    library provided with the course, based on COBS framing.
 \end{itemize}
 
 \subsubsection{Code Structure}
 
-\begin{lstlisting}[language=C, caption={C code using listings}, label={lst:label} ]
-#include <stdio.h>
-int main()
+All the application code is in \texttt{Core/Src/main.c}. The functions follow the signal chain of the control loop
+and are called from the TIM6 callback, which is the only periodic task of the program:
+
+\begin{lstlisting}[language=C, caption={Structure of the 100~Hz callback.}, label={lst:lab2-isr}]
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	// print hello to the console
-	printf("Hello, world!");
-	return 0;
+  if (htim->Instance == TIM6)
+  {
+    float w1 = M1_SIGN * counts_to_rads(enc_delta(&htim3, &TIM3_previous_count));
+    float w2 = M2_SIGN * counts_to_rads(enc_delta(&htim4, &TIM4_previous_count));
+
+    float v_ref = 0.0f;
+    if (logger.tx_enable)
+    {
+      v_ref = step_reference(tick);
+      tick++;
+    }
+    else
+    {
+      tick = 0; /* restart */
+    }
+
+    float u1 = M1_SIGN * motor_set_voltage(M1_IN1_CH, M1_IN2_CH, M1_SIGN * v_ref);
+    float u2 = M2_SIGN * motor_set_voltage(M2_IN1_CH, M2_IN2_CH, M2_SIGN * v_ref);
+
+    data.w1 = w1;  data.w2 = w2;  data.u1 = u1;  data.u2 = u2;
+
+    ertc_dlog_send(&logger, &data, sizeof(data));
+  }
 }
 \end{lstlisting}
 
-See code~\ref{lst:label}.
+\noindent The speed measurement is done by \texttt{enc\_delta}, which returns the signed number of counts between two
+readings, and by \texttt{counts\_to\_rads}, which applies \eqref{eq:lab2-speed}. The wrap-around correction follows
+the implementation of the lecture and distinguishes the counting direction:
 
-\subsection{Controller Design (If Applicable)}
+\begin{lstlisting}[language=C, caption={Encoder delta with overflow and underflow correction.}, label={lst:lab2-enc}]
+uint32_t current_count = __HAL_TIM_GET_COUNTER(htim);
+int32_t range = (int32_t)__HAL_TIM_GET_AUTORELOAD(htim) + 1;   /* 3840 */
+int32_t diff_count;
 
-If the activity involved control system synthesis:
-\begin{itemize}
-	\item State desired requirements (e.g., Settling Time $T_s < 1.0\,\text{s}$, Phase Margin $\phi_m > 45^\circ$).
-	\item Detail the tuning method (e.g., pole placement, root locus, frequency response tuning).
-\end{itemize}
+if (__HAL_TIM_IS_TIM_COUNTING_DOWN(htim))
+{
+  if (current_count <= *previous_count)
+    diff_count = (int32_t)current_count - (int32_t)(*previous_count);
+  else /* counter underflow */
+    diff_count = -(range - (int32_t)current_count) - (int32_t)(*previous_count);
+}
+else /* COUNTING_UP */
+{
+  if (current_count >= *previous_count)
+    diff_count = (int32_t)current_count - (int32_t)(*previous_count);
+  else /* counter overflow */
+    diff_count = (range - (int32_t)(*previous_count)) + (int32_t)current_count;
+}
+*previous_count = current_count;
+return diff_count;
+\end{lstlisting}
+
+\noindent The conversion from a requested voltage into compare values is in \texttt{motor\_set\_voltage}. The function
+computes the signed duty cycle, saturates it, converts it into a number of ticks of the PWM period and then decides
+which input stays on for the whole period and which one is modulated:
+
+\begin{lstlisting}[language=C, caption={Voltage to PWM conversion with coast/brake selection.}, label={lst:lab2-motor}]
+float duty = voltage / (float)VBATT;
+if (duty >  DUTY_MAX) duty =  DUTY_MAX;          /* +6 V */
+if (duty < -DUTY_MAX) duty = -DUTY_MAX;          /* -6 V */
+
+uint32_t full = TIM8_ARR_VALUE + 1u;             /* 400 ticks */
+uint32_t on   = (uint32_t)(fabsf(duty) * (float)full);
+
+#if DRIVE_MODE == MODE_COAST
+  forward_input_ticks = on;        reverse_input_ticks = 0;
+#else
+  forward_input_ticks = full;      reverse_input_ticks = full - on;
+#endif
+
+if (duty >= 0.0f) {  /* forward */
+  __HAL_TIM_SET_COMPARE(&htim8, ch_in1, forward_input_ticks);
+  __HAL_TIM_SET_COMPARE(&htim8, ch_in2, reverse_input_ticks);
+} else {             /* reverse: the two inputs are swapped */
+  __HAL_TIM_SET_COMPARE(&htim8, ch_in1, reverse_input_ticks);
+  __HAL_TIM_SET_COMPARE(&htim8, ch_in2, forward_input_ticks);
+}
+return duty * (float)VBATT;   /* voltage actually commanded */
+\end{lstlisting}
+
+\noindent The number of ticks is computed from \texttt{ARR+1} and not from \texttt{ARR}, because the period of the
+counter contains \texttt{ARR+1} values; with \texttt{ARR} the 100\,\% would never be reached and the complement
+\texttt{full-on} would be shifted by one tick. The value returned by the function is the voltage after the
+saturation, so the PC receives the input that was really commanded and not the one that was requested.
+
+The voltage sequence is generated by \texttt{step\_reference}, a function of the sample index. It counts the
+samples instead of the time, so the durations follow $T_s$ without accumulation of floating-point error:
+
+\begin{lstlisting}[language=C, caption={Automatic sequence of five steps.}, label={lst:lab2-step}]
+static const float step_amps[] = {2.0f, 3.0f, 3.84f, 5.0f, 6.0f};
+#define N_STEPS (sizeof(step_amps) / sizeof(float))
+
+static float step_reference(uint32_t ir_count)
+{
+  /* from seconds to ticks */
+  const uint32_t n_rest = (uint32_t)(T_REST / TS + 0.5);   /* 200 */
+  const uint32_t n_step = (uint32_t)(T_STEP / TS + 0.5);   /* 300 */
+  const uint32_t n_period = n_rest + n_step;               /* 500 */
+
+  uint32_t experiment_index = ir_count / n_period;
+  if (experiment_index >= N_STEPS)
+    return 0.0f; /* experiment finished, put voltage back to 0V */
+
+  uint32_t status = ir_count % n_period;
+  return (status >= n_rest) ? step_amps[experiment_index] : 0.0f;
+}
+\end{lstlisting}
+
+\noindent Every amplitude is applied as two seconds at 0~V followed by three seconds at the step value; after 25~s the
+output stays at 0~V. This gives a clean baseline before each step, which is what the segmentation in MATLAB needs to
+find the starting instant of every response.
+
+\subsection{Identification Experiment and Data Processing}
+
+\paragraph{Choice of the step amplitudes.} We followed the first hypothesis of the lecture: no prior knowledge of the
+operating point, so the parameters are estimated at several amplitudes and then compared. We used
+$\{2,\,3,\,3.84,\,5,\,6\}$~V, which covers the whole range allowed by the 50\,\% limit. Both the 63.2\,\% method and
+the tangent method were applied to all five steps; of the two, we kept the 63.2\,\% estimates because they are less
+sensitive to noise on the derivative, as discussed in Section~\ref{sec:lab2-issues}. The reference voltage for the
+controller design is $3.84$~V, that is $0.64\times6$~V: this value comes from the laboratory document and from the
+lecture, where it is presented as the weighted operating point of the line-following task (the value $0.64$ itself is
+a convention adopted in the course material).
+
+\paragraph{Choice of the drive mode.} We selected forward/brake (mode~2): during the two seconds at 0~V the bridge
+actively brakes the wheel, so every step starts from a speed that is really zero, while with coast the wheel would
+still be rotating from the previous step. The brake mode also makes the end of the sequence a controlled
+stop. The disadvantage is that the off-time of the PWM
+is a braking interval, so the mechanical response is not exactly that of a pure voltage source.
+
+\paragraph{Filtering.} The raw speed is affected by quantization and vibration, as visible in
+Figure~\ref{fig:lab2-filter}. We filtered both signals with a first-order low-pass filter
+\begin{equation}
+  H(s) = \frac{2\pi f_c}{s+2\pi f_c}, \qquad f_c = 2~\text{Hz},
+  \label{eq:lab2-filter}
+\end{equation}
+discretised with the Tustin method at $T_s=10$~ms. The cutoff frequency was chosen by comparing the filtered curve
+with the raw data: at 8~Hz the filter still passes too much noise, while at lower frequencies the rise of the step is
+visibly delayed. With $f_c=2$~Hz the noise of the plateau is removed and the rise keeps its shape. This
+introduces a group
+delay of $1/(2\pi f_c)\approx0.08$~s, which is not negligible with respect to $T$ and which partly appears as a time
+delay in the identification; this point is discussed in Section~\ref{sec:lab2-issues}. The filter cutoff is a trade-off:
+a lower frequency removes more noise but shifts the response to the right and artificially increases the estimated
+delay, while a higher frequency preserves the rise but leaves more noise that corrupts the derivative needed by the
+tangent method.
+
+\paragraph{Data logging.} The firmware sends a packet of four floats (two speeds, two voltages) every 10~ms, encoded
+with COBS and sent on USART3 at 115200 baud: 18 bytes take 1.6~ms, 16\,\% of the period. The time axis is not
+transmitted: the MATLAB app adds $T_s=10$~ms per packet and the time vector assumes that no packet is lost. Both the
+voltage and the speed are sent in the same packet because the PC and the TurtleBot are asynchronous systems: without
+the voltage trace in the same acquisition it would be impossible to know exactly when the step was applied, and the
+time constant and the delay could not be computed correctly.
+
+\subsection{Controller Design}
+
+\paragraph{Identified model.} The 63.2\,\% method applied to the step at 3.84~V gives, for motor~1,
+$\mu=2.408$~rad/s/V, $T=0.26$~s and $\tau=0.06$~s; for motor~2 it gives $\mu=1.916$~rad/s/V, $T=0.25$~s and the same
+delay. The two motors are not identical, and the gain differs by about 20\,\%. The delay is small and is largely due
+to the filter, but it is positive, which is the condition required by the open-loop tuning rules.
+
+\paragraph{Ziegler--Nichols.} Both identification methods were applied to all five steps; the open-loop Ziegler--Nichols
+rules \eqref{eq:lab2-zn} were then evaluated on the 63.2\,\% estimates at $V_a=3.84$~V. For motor~1 this gives
+$K_p=1.620$ and $K_i=8.998$ ($T_i=0.18$~s). As a cross-check we also computed the closed-loop variant of the method
+on the identified model: the critical frequency is the solution of $-\omega\tau-\arctan(\omega T)=-\pi$, which gives
+$\omega_c=28.4$~rad/s, $T_{cr}=0.221$~s and $K_{cr}=3.10$; the PI row of the table then gives $K_p=1.394$,
+$T_i=0.184$~s and $K_i=7.56$. The two sets are close, a good consistency check; the open-loop method was chosen
+because it uses only the measured step response. The same procedure applied to motor~2 gives the gains stored in the
+firmware. Table~\ref{tab:lab2-gains} summarises the values.
+
+\begin{table}[H]
+  \centering
+  \small
+  \begin{tabular}{@{}llccc@{}}
+    % tex-fmt: off
+    \toprule
+    Motor & Method & $K_p$ & $T_i$ [s] & $K_i$ \\
+    \midrule
+    1 & Ziegler--Nichols open loop (used)  & 1.6196 & 0.180 & 8.9979 \\
+    1 & Ziegler--Nichols closed loop       & 1.3935 & 0.184 & 7.5644 \\
+    2 & Ziegler--Nichols open loop (used)  & 1.9574 & 0.180 & 10.8747 \\
+    \bottomrule
+    % tex-fmt: on
+  \end{tabular}
+  \caption{PI gains obtained from the identified models. The first and third rows are the constants \texttt{KP1/KI1}
+  and \texttt{KP2/KI2} of the firmware.}
+  \label{tab:lab2-gains}
+\end{table}
+
+\noindent The proportional gain is larger for motor~2 only because its static gain is smaller: the product
+$K_p\mu$ is similar for the two wheels, so the two loops have a comparable bandwidth. The controller is implemented
+as a discrete PI with forward Euler integration, exactly as in the lecture:
+\begin{equation}
+  u(k) = K_p\,e(k) + I(k), \qquad I(k) = I(k-1) + K_i\,T_s\,e(k) .
+  \label{eq:lab2-pi}
+\end{equation}
+A separate PI instance is kept for each wheel (separate proportional and integral gains, separate integral state),
+because the integral term must persist across calls and must not be shared between the two motors.
 
 \subsection{Discovered Issues, Calibration \& Workarounds}
+\label{sec:lab2-issues}
 
-This section captures critical unexpected findings during execution:
-\begin{itemize}
-	\item \textbf{Unforeseen Issues:} Detail any problems not noticed during the design phase (e.g., noise on sensor pins, numerical overflow).
-	\item \textbf{Calibration \& Performance Gaps:} If the controller did not achieve perfect calibration or desired performance, explain why (e.g., unmodeled dynamics, saturation limits, transport delay) and propose plausible fixes.
-	\item \textbf{Original / Experimental Solutions:} If original or non-standard approaches were tried, describe why they were developed and assess their success or failure.
-\end{itemize}
+\paragraph{Delay introduced by the filter.} The first identification attempts on the raw signal produced derivative
+spikes of the order of 70~rad/s$^2$ and a completely wrong tangent. Filtering solved the problem but moved the
+apparent start of the response to the right. The 63.2\,\% method gives $\tau\approx0.05$--$0.06$~s on all five steps,
+while the physical motor has almost no dead time: most of that value is the group delay of the filter (0.08~s). We
+kept the measured value because the tuning rules need $\tau>0$, but we know it is an upper bound and that part of
+it comes from the processing.
+
+\paragraph{Tangent method versus 63.2\,\% method.} Both methods were applied to all five steps. The tangent method
+gives $T\approx0.32$--$0.40$~s, about 45\,\% larger than the 63.2\,\% method. The reason is that the filter reduces
+the maximum slope, and a smaller slope in \eqref{eq:lab2-tangent} gives a larger $T$. The tangent method is therefore
+correct in principle but biased by the filtering, and for this reason we used the 63.2\,\% estimates for the
+controller.
+
+\paragraph{Non-linearity of the motor.} The estimated gain is not constant: it grows from 2.18~rad/s/V at 2~V to
+2.74~rad/s/V at 6~V, and the time constant from 0.22 to 0.27~s. At low voltage the static friction dominates, at
+high voltage the motor approaches saturation. This is why the lecture suggests several operating points; since the
+gain varies with the voltage, the controller is designed at the chosen reference point $V_a=3.84$~V.
+
+\paragraph{Supply voltage.} The firmware declares \texttt{VBATT = 12}~V, which matches the bench power supply used
+in the laboratory. The motor is rated for about 6~V, so the duty cycle is limited to 50\,\% to apply at most 6~V
+to the motor. Since the power supply is connected to the mains, it is not appropriate to inject current back into
+it: for this reason we selected the forward/brake mode (mode~2) rather than coast. In coast mode the current would
+decay quickly through the body diodes and current would be injected into the power supply, while in brake mode the
+winding is shorted and the current decays slowly without returning energy to the supply.
+
+\paragraph{Integral wind-up in the simulation.} The first closed-loop simulation used the PI of \eqref{eq:lab2-pi}
+with a simple saturation of the output. During the initial transient the controller asks for more than 6~V, the
+output stays at 6~V for 0.68~s, but the integral keeps accumulating. The result is a peak of 13.5~rad/s, that is a
+35\,\% overshoot, with a settling time of 1.2~s. Re-running the same simulation with conditional integration (the
+integral is updated only when the output is not saturated or when the error pushes it back) reduces the overshoot to
+0.1\,\% and the settling time to 0.6~s. The firmware will need the same correction in Laboratory~3.
+
+\paragraph{Time axis and lost packets.} A dropped packet does not create a gap, so the recording simply becomes
+shorter. With the blocking UART transmission inside the interrupt the margin is only 8.4~ms per period, so the packet
+rate is the first thing to check when the identification looks inconsistent.
 
 \subsection{Results and Graphical Analysis}
+\label{sec:lab2-results}
 
-Present collected measurements, plots, and experimental data. Describe what each plot demonstrates rather than just attaching graphics.
+Figure~\ref{fig:lab2-filter} shows the five-step experiment after filtering. The two wheels reach different speeds,
+as expected from the different gains, and the response of motor~1 is cleaner. The plateaus are flat, which confirms
+that three seconds are enough to reach the steady state (more than ten time constants); motor~2 shows a small
+oscillation on the plateau at high speed, probably due to the mechanical coupling of the two wheels on the same axis.
 
-\begin{figure}[htbp]
-	\centering
-	\framebox[0.85\textwidth]{\vbox to 45mm{\vfill \centerline{\textit{[ Insert Step Response Plot / Data Visualisation Here ]}} \vfill}}
-	\caption{Step response comparison: Target trajectories vs. Measured output.}
-	\label{fig:step_response}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.70\textwidth]{figures/filtered_all.png}
+  \caption{Measured speeds of the two wheels, raw and filtered with $f_c=2$~Hz, during the five-step sequence.}
+  \label{fig:lab2-filter}
+\end{figure}
+
+\noindent Table~\ref{tab:lab2-identification} collects the estimates of motor~1 for the five amplitudes, obtained with
+the two methods. The gain increases with the amplitude, while the delay is essentially constant; the 63.2\,\% method
+gives the same time constant for the last two steps, which suggests that the motor is close to saturation there.
+
+\begin{table}[H]
+  \centering
+  \small
+  \begin{tabular}{@{}cccccccc@{}}
+    % tex-fmt: off
+    \toprule
+    Step & $V_a$ [V] & $f_\infty$ [rad/s] & $\mu$ [rad/s/V] & $T_{63}$ [s] & $\tau_{63}$ [s] & $T_{tan}$ [s] & $\tau_{tan}$ [s] \\
+    \midrule
+    1 & 2.00 & 4.36  & 2.181 & 0.22 & 0.050 & 0.318 & 0.039 \\
+    2 & 3.00 & 6.54  & 2.180 & 0.22 & 0.060 & 0.325 & 0.042 \\
+    3 & 3.84 & 9.25  & 2.408 & 0.26 & 0.060 & 0.377 & 0.048 \\
+    4 & 5.00 & 13.12 & 2.625 & 0.27 & 0.060 & 0.382 & 0.048 \\
+    5 & 6.00 & 16.43 & 2.739 & 0.27 & 0.060 & 0.397 & 0.047 \\
+    \midrule
+    mean   & -- & -- & 2.427 & 0.248 & 0.058 & 0.360 & 0.045 \\
+    median & -- & -- & 2.408 & 0.260 & 0.060 & 0.377 & 0.048 \\
+    \bottomrule
+    % tex-fmt: on
+  \end{tabular}
+  \caption{Identification of motor~1 with the 63.2\,\% method and with the tangent method.}
+  \label{tab:lab2-identification}
+\end{table}
+
+\noindent Figure~\ref{fig:lab2-openloop} compares the measured speed with the two theoretical models, $G(s)$ without
+delay and $P(s)=\mu e^{-\tau s}/(1+Ts)$, driven by the recorded voltage. The model follows the five transients well,
+and the difference between $G$ and $P$ is small, which confirms that the delay is not the dominant term. The
+steady-state speed is slightly overestimated at 2~V and 3~V because a single linear gain cannot reproduce the
+friction at low speed. This is the expected effect of the non-linearity described above and it is the reason why the
+model is used near its operating point.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.70\textwidth]{figures/open-loop_simulation.png}
+  \caption{Open-loop validation: measured speed of motor~1 compared with $G(s)$ and $P(s)$ driven by the recorded
+  voltage.}
+  \label{fig:lab2-openloop}
+\end{figure}
+
+\noindent Finally, Figure~\ref{fig:lab2-closedloop} shows the simulated closed-loop response to a reference of
+10~rad/s with the PI of Table~\ref{tab:lab2-gains}. The rise is fast but the actuator saturates for the first 0.68~s,
+so the integral accumulates and the response overshoots by 35\,\%; the steady-state error is zero after about 2~s and
+the control action settles at 4.15~V, which is exactly $10/\mu$. The anti-windup variant discussed in
+Section~\ref{sec:lab2-issues} removes almost all the overshoot, and it is the version that should be implemented on
+the board.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.62\textwidth]{figures/closed-loop_simulation.png}
+  \caption{Closed-loop simulation with the PI tuned on the identified model: speed (top) and control action (bottom).}
+  \label{fig:lab2-closedloop}
 \end{figure}
 
 \subsection{Conclusions}
 
-Summarise the key learnings, whether the initial objectives were reached, and what improvements could be introduced in future iterations.
+The two motors were identified in open loop with a fully automatic experiment, and the first-order model obtained
+with the 63.2\,\% method describes the measured transients well: $\mu\approx2.4$~rad/s/V and $T\approx0.26$~s for
+motor~1, with a gain about 20\,\% smaller for motor~2. The tangent method gave the right order of magnitude but
+overestimated $T$, because the derivative is sensitive to the residual noise and to the delay of the filter.
 
-\clearpage
-\appendix
-
-\section{Section in the Appendix}
-\label{sec:app1}
-
-\subsection{Subsection in the Appendix}
-\label{subsec:app2}
-
-Additional relevant information...
+The main lessons were the importance of the measurement chain (quantization, wrap-around, filtering) and the fact
+that a linear model is valid only around its operating point, since the gain changes by 25\,\% over the allowed
+range. The Ziegler--Nichols PI is stable and fast in simulation; the integral wind-up found there is the problem to
+solve before using it on the robot.
 
 \end{document}
