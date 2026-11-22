@@ -77,7 +77,7 @@
 
     \begin{tabular}{lc}
       Diego Marchini   & 2239741 \\
-      Alessio Modonesi & 2101846 \\
+      Alessio Modonesi & 2244493 \\
       Susanna Sandoyan & 2222159 \\
       Mattia Zanini    & 2239257
     \end{tabular}
@@ -102,7 +102,7 @@ serial bus. In particular, we used the I2C bus to read data from a keypad and a 
 
 I2C is a two-wire, synchronous bus that supports both multiple masters and multiple slaves. \texttt{SCL} is
 the clock line and \texttt{SDA} is the bidirectional data line \hl{(pins \texttt{PB8} and \texttt{PB9} for
-I2C1 on this board)}. In our setup there is a single master (the STM32) and two slaves (the two SX1509
+  I2C1 on this board)}. In our setup there is a single master (the STM32) and two slaves (the two SX1509
 devices). Both lines are driven by open-drain stages with pull-up resistors, so they are high when the bus is
 idle. A transaction begins with a START condition, followed by the 7-bit slave address and a read/write bit;
 every byte is acknowledged by the receiver, and one or more data bytes can follow. Since several devices
@@ -152,10 +152,10 @@ line, while 0 means white background.
   \begin{tabular}{lcccccccc}
     % tex-fmt: off
     \toprule
-    Bit / sensor  & 7     & 6     & 5     & 4     & 3     & 2     & 1     & 0     \\
+    Bit / sensor & 7     & 6     & 5     & 4     & 3     & 2     & 1     & 0     \\
     \midrule
-    Bit value     & 0     & 0     & 0     & 1     & 1     & 0     & 0     & 0     \\
-    Surface       & white & white & white & black & black & white & white & white \\
+    Bit value    & 0     & 0     & 0     & 1     & 1     & 0     & 0     & 0     \\
+    Surface      & white & white & white & black & black & white & white & white \\
     \bottomrule
     % tex-fmt: on
   \end{tabular}
@@ -164,7 +164,7 @@ line, while 0 means white background.
 \end{table}
 
 \noindent \hl{Note that the binary notation, written from bit~7 to bit~0, is reversed with respect to the physical
-order of the sensors.}
+  order of the sensors.}
 
 \subsubsection{4$\times$4 keypad}
 
@@ -195,7 +195,7 @@ Many integer pairs satisfy this product, but both factors must fit in 16 bits (a
 $(PSC+1)$ must divide $9.6\cdot10^{6}$ exactly to avoid a frequency error. The pair we actually chose is
 $PSC+1 = 960$ and $ARR+1 = 10000$, that is $PSC=959$ and $ARR=9999$. \hl{With this choice one counter tick is a
   round $10~\mu$s, so the number of ticks needed for any period is immediate to compute (for example $ARR=4999$
-for 50~ms), which keeps the arithmetic simple and readable.}
+  for 50~ms), which keeps the arithmetic simple and readable.}
 
 \subsection{Brief Introduction and Objectives}
 
@@ -223,21 +223,21 @@ The five exercises can be summarised as follows.
   \begin{tabular}{@{}%
       >{\raggedright\arraybackslash}p{0.06\textwidth}%
       >{\raggedright\arraybackslash}p{0.44\textwidth}%
-    >{\raggedright\arraybackslash}p{0.40\textwidth}@{}}
+      >{\raggedright\arraybackslash}p{0.40\textwidth}@{}}
     % tex-fmt: off
     \toprule
-    \textbf{Ex.} & \textbf{Requirement} & \textbf{Mechanism} \\
+    \textbf{Ex.} & \textbf{Requirement}                                                     & \textbf{Mechanism} \\
     \midrule
     1            & Recognise the keypad interrupt and print the triggering pin
-                 & External interrupt on \texttt{PF4} (\texttt{HAL\_GPIO\_EXTI\_Callback}) \\
+                 & External interrupt on \texttt{PF4} (\texttt{HAL\_GPIO\_EXTI\_Callback})                       \\
     2            & Decode and print which key has been pressed
-                 & Read \texttt{REG\_KEY\_DATA\_1/2} and map row/column bits to a character \\
+                 & Read \texttt{REG\_KEY\_DATA\_1/2} and map row/column bits to a character                      \\
     3            & Read and print the line sensor every 100~ms
-                 & Polling in the \texttt{while(1)} loop with \texttt{HAL\_Delay(100)} \\
+                 & Polling in the \texttt{while(1)} loop with \texttt{HAL\_Delay(100)}                           \\
     4            & Re-implement Exercise~3 without a software delay
-                 & Base timer TIM6 generating an interrupt every 100~ms \\
+                 & Base timer TIM6 generating an interrupt every 100~ms                                          \\
     5            & Set the LED blinking frequency from the keypad
-                 & Keypad interrupt updates the frequency, main loop toggles the LED \\
+                 & Keypad interrupt updates the frequency, main loop toggles the LED                             \\
     \bottomrule
     % tex-fmt: on
   \end{tabular}
@@ -249,27 +249,27 @@ Before writing any code, we had to solve the following issues:
 
 \begin{itemize}[nosep]
   \item \textbf{Two devices on the same bus.} Since both SX1509 devices share I2C1,
-    every transaction must select the correct 7-bit slave address and,
-    inside the device, the correct register address.
+        every transaction must select the correct 7-bit slave address and,
+        inside the device, the correct register address.
   \item \textbf{Latching interrupt line.} The \texttt{NINT} output of the
-    keypad expander is released only after the master has read both key-data
-    registers. If the ISR does not read them, no further interrupt is received:
-    this is why the read is already part of Exercise~1, even though the key is
-    decoded only in Exercise~2.
+        keypad expander is released only after the master has read both key-data
+        registers. If the ISR does not read them, no further interrupt is received:
+        this is why the read is already part of Exercise~1, even though the key is
+        decoded only in Exercise~2.
   \item \textbf{Timing of the line sensor readout.} The specification requires a
-    100~ms period (10~Hz). With a software delay this period is only
-    approximate, because the I2C transaction and the \texttt{printf} add to
-    the nominal delay. A hardware timer is therefore preferable.
+        100~ms period (10~Hz). With a software delay this period is only
+        approximate, because the I2C transaction and the \texttt{printf} add to
+        the nominal delay. A hardware timer is therefore preferable.
   \item \textbf{Output redirection.} There is no console on the target, so
-    \texttt{printf} must be redirected to the debugger through the ITM/SWO
-    interface.
+        \texttt{printf} must be redirected to the debugger through the ITM/SWO
+        interface.
 \end{itemize}
 
 \subsection{Theoretical Background}
 
 \noindent \hl{The background needed to follow the report is recalled in Section~\mbox{\ref{sec:lab1-theory}}:
   the I2C protocol, the SX1509 registers, the data formats of the line sensor and the keypad, and the timer
-frequency formula. These elements are used directly in the design choices described in the following sections.}
+  frequency formula. These elements are used directly in the design choices described in the following sections.}
 
 \subsection{Design \& Implementation Choices}
 \label{sec:lab1-code}
@@ -282,17 +282,17 @@ and the initialisation routines are in \texttt{Core/Inc/SX1509\_Registers.h} and
 
 \begin{itemize}[nosep]
   \item \textbf{STM32CubeMX (.ioc file):} used to configure the clock tree,
-    I2C1, GPIO \texttt{PF4} (external interrupt, falling edge), \texttt{PE5}
-    (GPIO output) and the TIM6 parameters.
+        I2C1, GPIO \texttt{PF4} (external interrupt, falling edge), \texttt{PE5}
+        (GPIO output) and the TIM6 parameters.
   \item \textbf{STM32CubeIDE:} used to write, build and debug the firmware
-    (GCC toolchain, ST-LINK debug probe).
+        (GCC toolchain, ST-LINK debug probe).
   \item \textbf{SWV ITM Data Console:} used as the output console. The
-    \texttt{\_write} function redirects \texttt{printf} to the
-    Instrumentation Trace Macrocell, so the messages are visible in the
-    debugger through the Single Wire Output without any serial port.
+        \texttt{\_write} function redirects \texttt{printf} to the
+        Instrumentation Trace Macrocell, so the messages are visible in the
+        debugger through the Single Wire Output without any serial port.
   \item \textbf{C language with the STM32 HAL:} all peripherals are accessed
-    through the HAL API, for example \texttt{HAL\_I2C\_Mem\_Read} for the bus
-    and \texttt{HAL\_TIM\_Base\_Start\_IT} for the timer.
+        through the HAL API, for example \texttt{HAL\_I2C\_Mem\_Read} for the bus
+        and \texttt{HAL\_TIM\_Base\_Start\_IT} for the timer.
 \end{itemize}
 
 \subsubsection{Code Structure}
@@ -304,7 +304,7 @@ Since the five exercises are alternative variants of the same application, we us
 \end{lstlisting}
 
 \noindent Only the code of the selected variant is compiled, because the relevant blocks are enclosed in \texttt{\#if
-EXERCISE == n} preprocessor guards. This keeps the project in a single file, avoids dead code in the binary
+  EXERCISE == n} preprocessor guards. This keeps the project in a single file, avoids dead code in the binary
 and makes it possible to demonstrate each exercise by recompiling after changing one line. The same macro
 also enables the Exercise~5 hook inside the keypad callback.
 
@@ -411,10 +411,10 @@ The LED on \texttt{PE5} (label \texttt{BLINKING\_LED}) was configured as a plain
 
 \begin{itemize}[nosep]
   \item \emph{easy way}: keys \texttt{A}, \texttt{B}, \texttt{C} and \texttt{D} select fixed frequencies of
-    1, 2, 5 and 10~Hz;
+        1, 2, 5 and 10~Hz;
   \item \emph{hard way (bonus)}: the frequency is typed digit by digit and confirmed with \texttt{\#}, while
-    \texttt{*} clears the input. The value is saturated at \texttt{MAX\_BLINK\_HZ = 100}~Hz, because for the human
-    eye the blinking would appear continuous.
+        \texttt{*} clears the input. The value is saturated at \texttt{MAX\_BLINK\_HZ = 100}~Hz, because for the human
+        eye the blinking would appear continuous.
 \end{itemize}
 
 \smallskip
@@ -464,7 +464,7 @@ not implement it, since it goes beyond the scope of the exercise.
   characters did not match the expected key. By printing the raw register values, we saw that the mapping was
   mirrored with respect to the physical layout; we corrected the switch cases and checked the result key by
   key. In a later refactoring we replaced the hard-coded characters with the \texttt{keypadLayout} matrix
-already provided by the template, which made the mapping consistent with the template.}
+  already provided by the template, which made the mapping consistent with the template.}
 
 \subsection{Results and Graphical Analysis}
 
@@ -491,7 +491,7 @@ This confirms both the bitmask convention (bit~1 = black) and the correctness of
 
 \paragraph{Exercises 1 and 2.} Pressing a key prints \texttt{Interrupt on pin (16)} (that is, \texttt{PF4}),
 the two register values and the decoded character. For example, pressing \texttt{B} gives \texttt{Column
-data: 247}, \texttt{Row data: 251} and \texttt{The pressed key is B}. The mapping was validated on all 16
+  data: 247}, \texttt{Row data: 251} and \texttt{The pressed key is B}. The mapping was validated on all 16
 keys.
 
 \paragraph{Exercise 5.} Figure~\ref{fig:lab1-ex5easy} shows the easy-way presets: each key produces the
@@ -512,7 +512,7 @@ the selected value in the range 1--35~Hz, which is the range that is practically
   \centering
   \includegraphics[width=\textwidth]{figures/ex5h.png}
   \caption{Exercise 5, hard way: frequency typed with digits and
-  confirmed with \#.}
+    confirmed with \#.}
   \label{fig:lab1-ex5hard}
 \end{figure}
 

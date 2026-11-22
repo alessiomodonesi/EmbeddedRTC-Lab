@@ -77,7 +77,7 @@
 
     \begin{tabular}{lc}
       Diego Marchini   & 2239741 \\
-      Alessio Modonesi & 2101846 \\
+      Alessio Modonesi & 2244493 \\
       Susanna Sandoyan & 2222159 \\
       Mattia Zanini    & 2239257
     \end{tabular}
@@ -193,7 +193,7 @@ open loop. The activity was organised in the following steps:
   \item generate automatically a sequence of voltage steps and log speed and voltage at 100~Hz;
   \item estimate $\mu$, $T$ and $\tau$ with two different methods and compare the results;
   \item use the identified model to tune a PI controller with the Ziegler--Nichols rules and check the closed-loop
-    response in simulation.
+        response in simulation.
 \end{itemize}
 
 \noindent The loop was not closed on the hardware: the controller is implemented in the firmware but it is not used
@@ -212,12 +212,12 @@ the experiment parameters.
   \begin{tabular}{@{}llll@{}}
     % tex-fmt: off
     \toprule
-    Peripheral & Configuration & Function & Rate \\
+    Peripheral    & Configuration                          & Function                          & Rate       \\
     \midrule
-    TIM3, TIM4        & encoder mode TI12, ARR 3839, filter 15 & wheel position (motor 1, motor 2) & continuous \\
-    TIM6              & PSC 959, ARR 999                       & control loop and sampling         & 100 Hz \\
-    TIM8 CH1--CH4     & PWM mode 1, PSC 959, ARR 399           & IN1/IN2 of the two DRV8871        & 250 Hz \\
-    USART3            & 115200 baud, 8N1                       & data logger to the PC             & 100 Hz \\
+    TIM3, TIM4    & encoder mode TI12, ARR 3839, filter 15 & wheel position (motor 1, motor 2) & continuous \\
+    TIM6          & PSC 959, ARR 999                       & control loop and sampling         & 100 Hz     \\
+    TIM8 CH1--CH4 & PWM mode 1, PSC 959, ARR 399           & IN1/IN2 of the two DRV8871        & 250 Hz     \\
+    USART3        & 115200 baud, 8N1                       & data logger to the PC             & 100 Hz     \\
     \bottomrule
     % tex-fmt: on
   \end{tabular}
@@ -229,14 +229,14 @@ the experiment parameters.
 
 \begin{itemize}[nosep]
   \item \textbf{Counter wrap-around.} The encoder timers count modulo 3840, so the difference of two readings is
-    correct only if the wheel turns less than half a revolution in 10~ms. The difference must be corrected on both
-    overflow and underflow, and the two cases are not symmetric.
+        correct only if the wheel turns less than half a revolution in 10~ms. The difference must be corrected on both
+        overflow and underflow, and the two cases are not symmetric.
   \item \textbf{Voltage limit.} The full duty cycle would apply 12~V to a 6~V motor. The requested voltage is
-    therefore saturated at $\pm6$~V, which corresponds to $\pm50$\,\% of the duty cycle.
+        therefore saturated at $\pm6$~V, which corresponds to $\pm50$\,\% of the duty cycle.
   \item \textbf{Reproducible experiment.} Five steps must be applied one after the other, each one starting from a
-    known speed, without a manual action. The sequence must restart from the beginning when a new acquisition starts.
+        known speed, without a manual action. The sequence must restart from the beginning when a new acquisition starts.
   \item \textbf{Noise.} The speed obtained by differentiating the encoder counts is affected by quantization and by
-    mechanical vibration, and the derivative needed by the tangent method amplifies both.
+        mechanical vibration, and the derivative needed by the tangent method amplifies both.
 \end{itemize}
 
 \subsection{Design \& Implementation Choices}
@@ -246,12 +246,12 @@ the experiment parameters.
 
 \begin{itemize}[nosep]
   \item \textbf{STM32CubeMX:} configuration of the clock tree, of the encoder timers, of the PWM timer, of the base
-    timer and of the UART used by the logger.
+        timer and of the UART used by the logger.
   \item \textbf{STM32CubeIDE:} writing, building and flashing of the firmware (GCC toolchain, ST-LINK probe).
   \item \textbf{MATLAB:} reception and storage of the data through the serial data logger app, low-pass filtering,
-    implementation of the two identification methods, Ziegler--Nichols tuning and simulation of the closed loop.
+        implementation of the two identification methods, Ziegler--Nichols tuning and simulation of the closed loop.
   \item \textbf{C with the STM32 HAL:} all peripherals are accessed through the HAL API; the data logger is a small
-    library provided with the course, based on COBS framing.
+        library provided with the course, based on COBS framing.
 \end{itemize}
 
 \subsubsection{Code Structure}
@@ -437,16 +437,16 @@ firmware. Table~\ref{tab:lab2-gains} summarises the values.
   \begin{tabular}{@{}llccc@{}}
     % tex-fmt: off
     \toprule
-    Motor & Method & $K_p$ & $T_i$ [s] & $K_i$ \\
+    Motor & Method                            & $K_p$  & $T_i$ [s] & $K_i$   \\
     \midrule
-    1 & Ziegler--Nichols open loop (used)  & 1.6196 & 0.180 & 8.9979 \\
-    1 & Ziegler--Nichols closed loop       & 1.3935 & 0.184 & 7.5644 \\
-    2 & Ziegler--Nichols open loop (used)  & 1.9574 & 0.180 & 10.8747 \\
+    1     & Ziegler--Nichols open loop (used) & 1.6196 & 0.180     & 8.9979  \\
+    1     & Ziegler--Nichols closed loop      & 1.3935 & 0.184     & 7.5644  \\
+    2     & Ziegler--Nichols open loop (used) & 1.9574 & 0.180     & 10.8747 \\
     \bottomrule
     % tex-fmt: on
   \end{tabular}
   \caption{PI gains obtained from the identified models. The first and third rows are the constants \texttt{KP1/KI1}
-  and \texttt{KP2/KI2} of the firmware.}
+    and \texttt{KP2/KI2} of the firmware.}
   \label{tab:lab2-gains}
 \end{table}
 
@@ -524,16 +524,16 @@ gives the same time constant for the last two steps, which suggests that the mot
   \begin{tabular}{@{}cccccccc@{}}
     % tex-fmt: off
     \toprule
-    Step & $V_a$ [V] & $f_\infty$ [rad/s] & $\mu$ [rad/s/V] & $T_{63}$ [s] & $\tau_{63}$ [s] & $T_{tan}$ [s] & $\tau_{tan}$ [s] \\
+    Step   & $V_a$ [V] & $f_\infty$ [rad/s] & $\mu$ [rad/s/V] & $T_{63}$ [s] & $\tau_{63}$ [s] & $T_{tan}$ [s] & $\tau_{tan}$ [s] \\
     \midrule
-    1 & 2.00 & 4.36  & 2.181 & 0.22 & 0.050 & 0.318 & 0.039 \\
-    2 & 3.00 & 6.54  & 2.180 & 0.22 & 0.060 & 0.325 & 0.042 \\
-    3 & 3.84 & 9.25  & 2.408 & 0.26 & 0.060 & 0.377 & 0.048 \\
-    4 & 5.00 & 13.12 & 2.625 & 0.27 & 0.060 & 0.382 & 0.048 \\
-    5 & 6.00 & 16.43 & 2.739 & 0.27 & 0.060 & 0.397 & 0.047 \\
+    1      & 2.00      & 4.36               & 2.181           & 0.22         & 0.050           & 0.318         & 0.039            \\
+    2      & 3.00      & 6.54               & 2.180           & 0.22         & 0.060           & 0.325         & 0.042            \\
+    3      & 3.84      & 9.25               & 2.408           & 0.26         & 0.060           & 0.377         & 0.048            \\
+    4      & 5.00      & 13.12              & 2.625           & 0.27         & 0.060           & 0.382         & 0.048            \\
+    5      & 6.00      & 16.43              & 2.739           & 0.27         & 0.060           & 0.397         & 0.047            \\
     \midrule
-    mean   & -- & -- & 2.427 & 0.248 & 0.058 & 0.360 & 0.045 \\
-    median & -- & -- & 2.408 & 0.260 & 0.060 & 0.377 & 0.048 \\
+    mean   & --        & --                 & 2.427           & 0.248        & 0.058           & 0.360         & 0.045            \\
+    median & --        & --                 & 2.408           & 0.260        & 0.060           & 0.377         & 0.048            \\
     \bottomrule
     % tex-fmt: on
   \end{tabular}
@@ -552,7 +552,7 @@ model is used near its operating point.
   \centering
   \includegraphics[width=0.70\textwidth]{figures/open-loop_simulation.png}
   \caption{Open-loop validation: measured speed of motor~1 compared with $G(s)$ and $P(s)$ driven by the recorded
-  voltage.}
+    voltage.}
   \label{fig:lab2-openloop}
 \end{figure}
 
