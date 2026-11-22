@@ -10,17 +10,22 @@ Welcome to the official repository for final project in the **Embedded Real-Time
 ├── labs/             # Lab source code and projects
 │   ├── lab0/
 │   ├── lab1/
-│   └── lab2/
+│   ├── lab2/
+│   ├── lab3/
+│   ├── lab4/
+│   └── lab5/
 ├── presentation/     # Materials for the final presentation
 ├── reports/          # Lab reports and template
 │   ├── lab1/
 │   ├── lab2/
+│   ├── lab3/
+│   ├── lab4/
 │   └── template/
 └── README.md
 ```
 
 - `docs/`: cross-cutting documentation and cheatsheets.
-- `labs/`: STM32 projects for `lab0`, `lab1`, and `lab2`, including code, drivers, and configurations.
+- `labs/`: STM32 projects for the 5 labs, including code, drivers, and configurations.
 - `reports/`: lab reports and LaTeX template.
 - `presentation/`: slides and materials for the final presentation.
 
