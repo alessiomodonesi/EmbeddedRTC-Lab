@@ -48,6 +48,7 @@
 #define RPM2RADS 2 * M_PI / 60
 #define ENC_PPR 3840.0f /* encoder counts per wheel revolution (x4 decoding, gearbox included) */
 #define DUTY_MAX 0.5f   /* lab requirement: duty <= 50 % (6 V on 12 V) */
+// #define V_MAX ((float)(DUTY_MAX * VBATT)) /* 12V / 2 = 6V */
 
 #define MODE_COAST 0 /* Forward/Coast (fast decay) */
 #define MODE_BRAKE 1 /* Forward/Brake (slow decay) */
@@ -64,10 +65,14 @@
  */
 #define M1_SIGN (+1) /* flip so "forward" gives w > 0 */
 #define M2_SIGN (+1)
+#define MOTORS_SIGN (+1) /* same rotational direction */
 
 /* step experiment */
 #define T_REST 2.0f /* in seconds 0 V before each step */
 #define T_STEP 3.0f /* in seconds, step duration */
+
+/* speed reference */
+#define W_TARGET -16.0f /* 6 rad/s, hardcoded */
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -100,6 +105,8 @@ UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
 struct ertc_dlog logger;
+bool reset_PI1 = true;
+bool reset_PI2 = true;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -135,11 +142,11 @@ struct datalog
   float u1, u2; /* applied voltage [V]         */
 } data;
 
-static const float step_amps[] = {2.0f, 3.0f, 3.84f, 5.0f, 6.0f};
+// static const float step_amps[] = {2.0f, 3.0f, 3.84f, 5.0f, 6.0f};
 #define N_STEPS (sizeof(step_amps) / sizeof(float)) /* step_amps length */
 
 static uint32_t TIM3_previous_count = 0, TIM4_previous_count = 0;
-static uint32_t tick = 0;
+// static uint32_t tick = 0;
 
 /* 2π * (d / (ARR * TS)) --> converts from encoder counts to rad/s */
 static float counts_to_rads(int32_t d)
@@ -183,9 +190,11 @@ static int32_t enc_delta(TIM_HandleTypeDef *htim, uint32_t *previous_count)
   return diff_count;
 }
 
+
 static float motor_set_voltage(uint32_t ch_in1, uint32_t ch_in2, float voltage)
 {
   float duty = voltage / (float)VBATT; /* signed duty cycle */
+
   // safety check
   if (duty > DUTY_MAX)
     duty = DUTY_MAX;
@@ -223,28 +232,35 @@ static float motor_set_voltage(uint32_t ch_in1, uint32_t ch_in2, float voltage)
 
 /* For each amplitude: T_REST at 0 V, then T_STEP at the amplitude.
    0 V once the sequence is over. */
-static float step_reference(uint32_t ir_count)
+/* static float step_reference(uint32_t ir_count)
 {
-  /* from seconds to ticks */
+  // from seconds to ticks
   const uint32_t n_rest = (uint32_t)(T_REST / TS + 0.5);
   const uint32_t n_step = (uint32_t)(T_STEP / TS + 0.5);
   const uint32_t n_period = n_rest + n_step;
 
   uint32_t experiment_index = ir_count / n_period;
   if (experiment_index >= N_STEPS)
-    return 0.0f; /* experiment finished, put voltage back to 0V */
+    return 0.0f; // experiment finished, put voltage back to 0V
 
-  /* check if you need to set the voltage high or low in the single experiment */
+  // check if you need to set the voltage high or low in the single experiment
   uint32_t status = ir_count % n_period;
   return (status >= n_rest) ? step_amps[experiment_index] : 0.0f;
-}
+} */
 
 /* motor 1 controller */
 float PI1(float error)
 {
+  static float I1 = 0.0f;
   float P = KP1 * error;
-  static float I1 = 0;
-  I1 = I1 + KI1 * error * TS;
+
+  if (reset_PI1)
+  {
+	  I1 = 0.0f;
+	  reset_PI1 = false;
+  }
+
+  I1 += KI1 * error * TS;
 
   return P + I1;
 }
@@ -252,12 +268,20 @@ float PI1(float error)
 /* motor 2 controller */
 float PI2(float error)
 {
+  static float I2 = 0.0f;
   float P = KP2 * error;
-  static float I2 = 0;
-  I2 = I2 + KI2 * error * TS;
+
+  if (reset_PI2)
+  {
+	  I2 = 0.0f;
+	  reset_PI2 = false;
+  }
+
+  I2 += KI2 * error * TS;
 
   return P + I2;
 }
+
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
@@ -267,29 +291,38 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* speed ctrl routine */
   if (htim->Instance == TIM6)
   {
-    // check speed log
-    // M1_SIGN, M2_SIGN give the direction of the speed
-    float w1 = M1_SIGN * counts_to_rads(enc_delta(&htim3, &TIM3_previous_count));
-    float w2 = M2_SIGN * counts_to_rads(enc_delta(&htim4, &TIM4_previous_count));
+    /* PI controller implentation */
+    float w1_measured = counts_to_rads(enc_delta(&htim3, &TIM3_previous_count));
+    float w2_measured = counts_to_rads(enc_delta(&htim4, &TIM4_previous_count));
 
-    float v_ref = 0.0f; // voltage reference
+    static float w_ref = 0.0f;
+
     // the logger starts with step_amps[0] voltage level (high)
     if (logger.tx_enable)
     {
-      v_ref = step_reference(tick);
-      tick++;
+    	w_ref = W_TARGET;
     }
     else
     {
-      tick = 0; // restart
+    	w_ref = 0.0f;
+    	reset_PI1 = true; /* I1 = 0 */
+    	reset_PI2 = true; /* I2 = 0 */
     }
 
-    // set the voltages
-    float u1 = M1_SIGN * motor_set_voltage(M1_IN1_CH, M1_IN2_CH, M1_SIGN * v_ref);
-    float u2 = M2_SIGN * motor_set_voltage(M2_IN1_CH, M2_IN2_CH, M2_SIGN * v_ref);
+    /* computing the speed error */
+    float w1_diff = w_ref - w1_measured;
+    float w2_diff = w_ref - w2_measured;
 
-    data.w1 = w1;
-    data.w2 = w2;
+    /* take the voltage reference from the PI, one for every motors */
+    float v1_ref = PI1(w1_diff);
+    float v2_ref = PI2(w2_diff);
+
+    /* set the voltages */
+    float u1 = motor_set_voltage(M1_IN1_CH, M1_IN2_CH, v1_ref);
+    float u2 = motor_set_voltage(M2_IN1_CH, M2_IN2_CH, v2_ref);
+
+    data.w1 = w1_measured;
+    data.w2 = w2_measured;
     data.u1 = u1;
     data.u2 = u2;
 
