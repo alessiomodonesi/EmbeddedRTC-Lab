@@ -60,19 +60,8 @@
 #define M2_IN1_CH TIM_CHANNEL_3 /* motor 2, encoder TIM4 */
 #define M2_IN2_CH TIM_CHANNEL_4
 
-/* +1: forward
- * -1: reverse
- */
-#define M1_SIGN (+1) /* flip so "forward" gives w > 0 */
-#define M2_SIGN (+1)
-#define MOTORS_SIGN (+1) /* same rotational direction */
-
-/* step experiment */
-#define T_REST 2.0f /* in seconds 0 V before each step */
-#define T_STEP 3.0f /* in seconds, step duration */
-
 /* speed reference */
-#define W_TARGET -16.0f /* 6 rad/s, hardcoded */
+#define W_TARGET 6.0f /* 6 rad/s, hardcoded */
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -142,11 +131,7 @@ struct datalog
   float u1, u2; /* applied voltage [V]         */
 } data;
 
-// static const float step_amps[] = {2.0f, 3.0f, 3.84f, 5.0f, 6.0f};
-#define N_STEPS (sizeof(step_amps) / sizeof(float)) /* step_amps length */
-
 static uint32_t TIM3_previous_count = 0, TIM4_previous_count = 0;
-// static uint32_t tick = 0;
 
 /* 2π * (d / (ARR * TS)) --> converts from encoder counts to rad/s */
 static float counts_to_rads(int32_t d)
@@ -160,15 +145,6 @@ static int32_t enc_delta(TIM_HandleTypeDef *htim, uint32_t *previous_count)
   uint32_t current_count = __HAL_TIM_GET_COUNTER(htim);
   int32_t range = (int32_t)__HAL_TIM_GET_AUTORELOAD(htim) + 1;
   int32_t diff_count = 0;
-
-  /* concise implementation: using only c2 difference */
-  /*
-    int32_t diff_count = (int32_t)current_count - (int32_t)(*previous_count);
-    if (diff_count > range / 2) // counter overflow
-      diff_count -= range;
-    else if (diff_count < -range / 2) // counter underflow
-      diff_count += range;
-  */
 
   /* motor control lecture implementations */
   if (__HAL_TIM_IS_TIM_COUNTING_DOWN(htim))
@@ -189,7 +165,6 @@ static int32_t enc_delta(TIM_HandleTypeDef *htim, uint32_t *previous_count)
   *previous_count = current_count;
   return diff_count;
 }
-
 
 static float motor_set_voltage(uint32_t ch_in1, uint32_t ch_in2, float voltage)
 {
@@ -230,24 +205,6 @@ static float motor_set_voltage(uint32_t ch_in1, uint32_t ch_in2, float voltage)
   return duty * (float)VBATT; // return the voltage correspondant to the duty cycle
 }
 
-/* For each amplitude: T_REST at 0 V, then T_STEP at the amplitude.
-   0 V once the sequence is over. */
-/* static float step_reference(uint32_t ir_count)
-{
-  // from seconds to ticks
-  const uint32_t n_rest = (uint32_t)(T_REST / TS + 0.5);
-  const uint32_t n_step = (uint32_t)(T_STEP / TS + 0.5);
-  const uint32_t n_period = n_rest + n_step;
-
-  uint32_t experiment_index = ir_count / n_period;
-  if (experiment_index >= N_STEPS)
-    return 0.0f; // experiment finished, put voltage back to 0V
-
-  // check if you need to set the voltage high or low in the single experiment
-  uint32_t status = ir_count % n_period;
-  return (status >= n_rest) ? step_amps[experiment_index] : 0.0f;
-} */
-
 /* motor 1 controller */
 float PI1(float error)
 {
@@ -256,12 +213,11 @@ float PI1(float error)
 
   if (reset_PI1)
   {
-	  I1 = 0.0f;
-	  reset_PI1 = false;
+    I1 = 0.0f;
+    reset_PI1 = false;
   }
 
   I1 += KI1 * error * TS;
-
   return P + I1;
 }
 
@@ -273,15 +229,13 @@ float PI2(float error)
 
   if (reset_PI2)
   {
-	  I2 = 0.0f;
-	  reset_PI2 = false;
+    I2 = 0.0f;
+    reset_PI2 = false;
   }
 
   I2 += KI2 * error * TS;
-
   return P + I2;
 }
-
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
@@ -297,16 +251,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
     static float w_ref = 0.0f;
 
-    // the logger starts with step_amps[0] voltage level (high)
     if (logger.tx_enable)
     {
-    	w_ref = W_TARGET;
+      w_ref = W_TARGET;
     }
     else
     {
-    	w_ref = 0.0f;
-    	reset_PI1 = true; /* I1 = 0 */
-    	reset_PI2 = true; /* I2 = 0 */
+      w_ref = 0.0f;
+      reset_PI1 = true; /* I1 = 0 */
+      reset_PI2 = true; /* I2 = 0 */
     }
 
     /* computing the speed error */
