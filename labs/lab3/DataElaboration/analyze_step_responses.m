@@ -2,7 +2,7 @@
 % Run this script in MATLAB from the folder containing the .mat files.
 
 % Definitions
-%   delay   : time from start of the recording to 10% of target
+%   delay   : time from voltage step onset (0 -> non-zero) to 10% of target
 %   rise    : time from 10% to 90% of target
 %   settling: last time the speed leaves +/-6% of target (at least +/-0.3 rad/s)
 %   osc.    : dominant period and amplitude of the ripple after settling
@@ -11,7 +11,7 @@ files = dir('*.mat');
 assert(~isempty(files), 'No .mat files found in %s', pwd);
 
 fprintf('Closed-loop step response analysis\n');
-fprintf('delay: recording start -> 10%% | rise: 10%% -> 90%% | settling: +/-6%% (min +/-0.3 rad/s)\n');
+fprintf('delay: voltage step (0 -> non-zero) -> 10%% | rise: 10%% -> 90%% | settling: +/-6%% (min +/-0.3 rad/s)\n');
 
 for k = 1:numel(files)
     name = files(k).name;
@@ -21,7 +21,9 @@ for k = 1:numel(files)
     assert(numel(d.signals) >= 2, '%s: expected speed and voltage signals', name);
     t = d.time(:)';
     w = d.signals{1};
+    u = d.signals{2};
     assert(size(w, 2) == numel(t), '%s: signal length does not match time vector', name);
+    assert(size(u, 2) == numel(t), '%s: voltage length does not match time vector', name);
 
     tok = regexp(name, '([+-]?\d+(?:\.\d+)?)rads', 'tokens', 'once');
     assert(~isempty(tok), 'Cannot parse target speed from %s', name);
@@ -38,8 +40,15 @@ for k = 1:numel(files)
         target = resp_sign * abs(target);
     end
 
-    m1 = analyze_motor(t, w(1, :), target);
-    m2 = analyze_motor(t, w(2, :), target);
+    % Delay is measured from the voltage step onset: the first sample where the
+    % voltage becomes non-zero (the recording is assumed to start at 0 V). When
+    % both motors are already at a non-zero voltage from sample 1 (saturated
+    % runs), the origin is the start of the recording.
+    istart = find(u(1, :) ~= 0 | u(2, :) ~= 0, 1, 'first');
+    if isempty(istart), t_step = t(1); else, t_step = t(istart); end
+
+    m1 = analyze_motor(t, w(1, :), target, t_step);
+    m2 = analyze_motor(t, w(2, :), target, t_step);
 
     fprintf('\n=== %s ===\n', name);
     if ~isempty(warning_msg), fprintf('%s\n', warning_msg); end
@@ -56,13 +65,13 @@ for k = 1:numel(files)
     fprintf('%-26s %16s %16s\n', 'Ripple amplitude',     fmt_amp(m1.osc_amp),   fmt_amp(m2.osc_amp));
     fprintf('%-26s %16s %16s\n', 'Settled interval',     fmt_iv(m1),            fmt_iv(m2));
 
-    plot_response(name, t, w, target, m1, m2);
+    plot_response(name, t, w, u, target, m1, m2);
 end
 
 fprintf('\nAnalysis complete: %d file(s). Figures left open in the MATLAB window.\n', numel(files));
 
 %% ------------------------------------------------------------------------
-function m = analyze_motor(t, w, target)
+function m = analyze_motor(t, w, target, t_step)
 m = struct('t0', NaN, 't10', NaN, 't90', NaN, 'y10', NaN, 'y90', NaN, ...
            'delay', NaN, 'rise', NaN, 'peak', NaN, 'peak_time', NaN, ...
            'peak_abs_time', NaN, 'overshoot', NaN, 'settle', NaN, ...
@@ -89,7 +98,7 @@ m.settled_end = t(iend);
 i10 = find(ww >= 0.1 * at, 1, 'first');
 i90 = find(ww >= 0.9 * at, 1, 'first');
 if ~isempty(i10)
-    m.delay = t(ion + i10 - 1) - t(1); % delay from start of recording
+    m.delay = max(0, t(ion + i10 - 1) - t_step); % delay from voltage step onset
     m.t10 = t(ion + i10 - 1);
     m.y10 = s * ww(i10);
 end
@@ -166,9 +175,9 @@ if ~isempty(iset)
 end
 end
 
-function plot_response(name, t, w, target, m1, m2)
+function plot_response(name, t, w, u, target, m1, m2)
 figure('Name', name, 'NumberTitle', 'off', 'Color', 'w');
-ax = axes;
+ax = subplot(2, 1, 1);
 hold(ax, 'on'); grid(ax, 'on');
 
 c1 = [0.000 0.447 0.741];
@@ -205,6 +214,16 @@ txt = {sprintf('M1  td=%s  tr=%s  ts=%s  OS=%s  Tosc=%s', ...
 text(0.01, 0.99, txt, 'Units', 'normalized', 'VerticalAlignment', 'top', ...
      'FontName', 'Consolas', 'FontSize', 8, 'BackgroundColor', 'w', ...
      'EdgeColor', [0.6 0.6 0.6], 'Margin', 4);
+
+ax2 = subplot(2, 1, 2);
+hold(ax2, 'on'); grid(ax2, 'on');
+plot(t, u(1, :), '-', 'Color', c1, 'LineWidth', 1.1);
+plot(t, u(2, :), '-', 'Color', c2, 'LineWidth', 1.1);
+xlabel('Time (s)');
+ylabel('Voltage (V)');
+title('Motor voltages');
+xlim([t(1), t(end)]);
+legend({'Motor 1 (u1)', 'Motor 2 (u2)'}, 'Location', 'best');
 end
 
 function highlight_motor(ax, m, col)
