@@ -40,9 +40,9 @@
 #define TS 0.01
 #define KP1 1.6196
 #define KI1 8.9979
+#define K_AWD1 0.4242611
 #define KP2 1.9574
 #define KI2 10.8747
-#define K_AWD1 0.4242611
 #define K_AWD2 0.4242591
 
 #define VBATT 12.0 /* PSU max voltage */
@@ -52,7 +52,7 @@
 #define RPM2RADS 2 * M_PI / 60
 #define ENC_PPR 3840.0f                   /* encoder counts per wheel revolution (x4 decoding, gearbox included) */
 #define DUTY_MAX 0.5f                     /* lab requirement: duty <= 50 % (6 V on 12 V) */
-#define V_MAX ((float)(DUTY_MAX * VBATT)) /* 12V / 2 = 6V */
+#define U_MAX ((float)(DUTY_MAX * VBATT)) /* 12V / 2 = 6V */
 
 #define MODE_COAST 0 /* Forward/Coast (fast decay) */
 #define MODE_BRAKE 1 /* Forward/Brake (slow decay) */
@@ -414,27 +414,29 @@ float PI1(float error)
     reset_PI1 = false;
   }
 
-  /* TODO: add anti-windup here */
-
-  float dummy_I1 = I1 + KI1 * error * TS;
+  float I1_pred = I1 + KI1 * error * TS;
 
   data.p1 = P;
   data.i1 = I1;
 
-  float voltage = P + dummy_I1;
+  float voltage = P + I1_pred;
 
-  if (voltage > V_MAX)
+  /* anti-windup */
+  if (voltage > U_MAX)
   {
-    e_s = V_MAX - voltage;
-    error = error - K_AWD1 * e_s;
+    e_s = voltage - U_MAX;
+    I1 += KI1 * (error - K_AWD1 * e_s) * TS;
   }
-  else if (voltage < -V_MAX)
+  else if (voltage < -U_MAX)
   {
-    e_s = -V_MAX - voltage;
-    error = error - K_AWD1 * e_s;
+    e_s = voltage + U_MAX;
+    I1 += KI1 * (error - K_AWD1 * e_s) * TS;
+  }
+  else
+  {
+    I1 += KI1 * error * TS;
   }
 
-  I1 += KI1 * error * TS;
   voltage = P + I1;
   return voltage;
 }
@@ -452,27 +454,29 @@ float PI2(float error)
     reset_PI2 = false;
   }
 
-  /* TODO: add anti-windup here */
-
-  float dummy_I2 = I2 + KI2 * error * TS;
+  float I2_pred = I2 + KI2 * error * TS;
 
   data.p2 = P;
   data.i2 = I2;
 
-  float voltage = P + dummy_I2;
+  float voltage = P + I2_pred;
 
-  if (voltage > V_MAX)
+  /* anti-windup */
+  if (voltage > U_MAX)
   {
-    e_s = V_MAX - voltage;
-    error = error - K_AWD2 * e_s;
+    e_s = voltage - U_MAX;
+    I2 += KI2 * (error - K_AWD2 * e_s) * TS;
   }
-  else if (voltage < -V_MAX)
+  else if (voltage < -U_MAX)
   {
-    e_s = -V_MAX - voltage;
-    error = error - K_AWD2 * e_s;
+    e_s = voltage + U_MAX;
+    I2 += KI2 * (error - K_AWD2 * e_s) * TS;
+  }
+  else
+  {
+    I2 += KI2 * error * TS;
   }
 
-  I2 += KI2 * error * TS;
   voltage = P + I2;
   return voltage;
 }
